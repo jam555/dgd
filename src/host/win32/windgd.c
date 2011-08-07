@@ -18,7 +18,7 @@
  */
 
 #include <windows.h>
-#include "dgd.h"
+# include "dgd.h"
 
 extern void conn_intr(void);
 

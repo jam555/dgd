@@ -17,16 +17,26 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 HOST=	DARWIN
-DEFINES=-D$(HOST)
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
+DMAKE=	make
 
-SRC=	local.c random.c dirent.c dload.c time.c connect.c xfloat.c
-OBJ=	local.o random.o dirent.o dload.o time.o connect.o crypt.o xfloat.o asn.o
-SUBOBJ=	local.o random.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+ifeq ($(HOST),WIN32)
+ DEFINES=-D$(HOST)
+
+ SRC= connect.c dload.c dosfile.c local.c time.c windgd.c	xfloat.c
+ OBJ= connect.o dload.o dosfile.o local.o time.o windgd.o	crypt.o xfloat.o asn.o
+ SUBOBJ=	connect.o dload.o dosfile.o local.o time.o windgd.o crypt.o xfloat.o asn.o
+else
+ DEFINES=-D$(HOST)
+
+ SRC=	local.c random.c dirent.c dload.c time.c connect.c xfloat.c
+ OBJ=	local.o random.o dirent.o dload.o time.o connect.o crypt.o xfloat.o asn.o
+ SUBOBJ=	local.o random.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+endif
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
@@ -40,6 +50,28 @@ sub:	$(SUBOBJ)
 clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
+
+ifeq ($(HOST),WIN32)
+
+connect.c: win32/connect.c
+	cp win32/$@ $@
+
+dload.c: win32/dload.c
+	cp win32/$@ $@
+
+dosfile.c: win32/dosfile.c
+	cp win32/$@ $@
+
+local.c: win32/local.c
+	cp win32/$@ $@
+
+time.c: win32/time.c
+	cp win32/$@ $@
+
+windgd.c: win32/windgd.c
+	cp win32/$@ $@
+
+else
 
 local.c: unix/local.c
 	cp unix/$@ $@
@@ -59,9 +91,14 @@ time.c: unix/time.c
 connect.c: unix/connect.c
 	cp unix/$@ $@
 
+endif
+
 xfloat.c: simfloat.c
 	cp simfloat.c $@
 
+
 $(OBJ):	../dgd.h ../host.h ../config.h ../alloc.h ../error.h
+
 connect.o: ../hash.h ../comm.h
+
 xfloat.o: ../xfloat.h
