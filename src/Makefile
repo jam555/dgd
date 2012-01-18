@@ -16,27 +16,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-ifeq ($(OS),Windows_NT)
- HOST= WIN32
- PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
-else
- HOST=	DARWIN
- PLATFORM_DEFINES=
-endif
-
-DEFINES=-D$(HOST) $(PLATFORM_DEFINES)	#-DNETWORK_EXTENSIONS #-DDUMP_FUNCS #-DCO_THROTTLE=50
+HOST=	DARWIN
+PLATFORM_DEFINES=
+DEFINES=-D$(HOST)	$(PLATFORM_DEFINES)	#-DNETWORK_EXTENSIONS #-DDUMP_FUNCS #-DCO_THROTTLE=50
 DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-
-ifeq ($(OS),Windows_NT)
- LIBS= -lws2_32 -lkernel32 -luser32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lodbc32 -lodbccp32
-else
- LIBS=	-ldl		# FreeBSD may require "make HOST=FREEBSD LIBS="
-endif
-
+LIBS=	-ldl		# FreeBSD may require "make HOST=FREEBSD LIBS="
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
@@ -59,7 +46,7 @@ a.out:	$(OBJ) always
 	cd kfun; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd lpc; $(DMAKE) 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' \
 			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(DMAKE) 'HOST=$(HOST)' 'DMAKE=$(DMAKE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(DMAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
@@ -107,7 +94,7 @@ clean:
 	cd parser; $(DMAKE) clean
 	cd kfun; $(DMAKE) clean
 	cd lpc; $(DMAKE) clean
-	cd host; $(DMAKE) 'HOST=$(HOST)' clean
+	cd host; $(DMAKE) clean
 
 
 path.o config.o dgd.o: comp/node.h comp/compile.h

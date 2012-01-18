@@ -22,7 +22,6 @@
 # include <ws2tcpip.h>
 # include <process.h>
 # define INCLUDE_FILE_IO
-
 # include "dgd.h"
 # include "hash.h"
 # include "comm.h"
