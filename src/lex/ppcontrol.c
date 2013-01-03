@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -78,7 +78,7 @@ bool pp_init(char *file, char **id, string **strs, int nstr, int level)
     mc_define("__DGD__", "\x0091\x009", -1);	/* HT 1 HT */
 #ifdef NETWORK_EXTENSIONS
     mc_define("__NETWORK_EXTENSIONS__", (char *) NULL, -1);
-#endif 
+#endif
     pps_init();
     include_level = level;
     ifs = &top;
@@ -423,29 +423,38 @@ static int pptokenz(char *key, unsigned int len)
     return len;
 }
 
-# define FIRST_KEYWORD	STRING
+# define FIRST_KEYWORD	NIL
 
 /*
  * NAME:	tokenz()
- * DESCRIPTION:	return a number in the range 1..27 specifying which keyword
+ * DESCRIPTION:	return a number in the range 1..29 specifying which keyword
  *		the argument is, or 0 if it isn't. Note that the keywords must
  *		be given in the same order here as in parser.y.
  */
 static int tokenz(char *key, unsigned int len)
 {
     static char *keyword[] = {
-      "string", "nomask", "nil", "break", "else", "case", "while",
-      "default", "static", "continue", "int", "rlimits", "float", "for",
-      "inherit", "void", "if", "catch", "switch", "varargs", "mapping",
-      "private", "do", "return", "atomic", "mixed", "object"
+      "nil", "break", "do", "mapping", "else", "case", "object",
+      "default", "static", "continue", "int", "float", "rlimits", "for",
+      "inherit", "if", "goto", "return", "mixed", "string", "while",
+      "function", "catch", "switch", "void", "private", "atomic",
+      "nomask", "varargs"
     };
     static char value[] = {
-      17, 17,  1,  0,  0,  7, 20, 11,  7,  0,  8, 12, 20,
-      14, 20, 14,  0,  3,  1,  0,  0, 11,  1,  0,  0,  0
+      19, 11,  1,  0,  0,  6, 12, 16,  7,  0, 14, 19, 13,
+       7,  0, 18,  0,  4,  1,  0,  0, 20, 15,  0,  0,  0
     };
 
-    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 27;
-    return (strcmp(keyword[len], key) == 0) ? len + 1 : 0;
+    len = (len + value[key[0] - 'a'] + value[key[len - 1] - 'a']) % 29;
+    if (strcmp(keyword[len], key) == 0) {
+# ifndef CLOSURES
+	if (len == FUNCTION - FIRST_KEYWORD) {
+	    return 0;
+	}
+# endif
+	return len + 1;
+    }
+    return 0;
 }
 
 /*

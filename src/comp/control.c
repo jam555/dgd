@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -120,7 +120,7 @@ static int vfhchunksz = VFH_CHUNK; /* size of current vfh chunk */
  * NAME:	vfh->new()
  * DESCRIPTION:	create a new vfh table element
  */
-static void vfh_new(string *str, oh *ohash, unsigned short ct, 
+static void vfh_new(string *str, oh *ohash, unsigned short ct,
 	string *cvstr, short idx, vfh **addr)
 {
     vfh *h;
@@ -394,7 +394,7 @@ static void ctrl_funcdef(control *ctrl, int idx, oh *ohash)
 	/*
 	 * privately inherited nomask function is not allowed
 	 */
-	c_error("private inherit of nomask function %s (/%s)", str->text, 
+	c_error("private inherit of nomask function %s (/%s)", str->text,
 		ohash->chain.name);
 	return;
     }
@@ -1283,18 +1283,24 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
 	inherit = ohash->index;
 	symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
 	if (symb == (dsymbol *) NULL) {
-	    /*
-	     * It may seem strange to allow label::kfun, but remember that they
-	     * are supposed to be inherited by the auto object.
-	     */
-	    index = kf_func(str->text);
-	    if (index >= 0) {
-		/* kfun call */
-		*call = ((long) KFCALL << 24) | index;
-		return KFUN(index).proto;
+	    if (ctrl->ninherits != 1) {
+		ohash = inherits[0];
+		symb = ctrl_symb(ctrl = ohash->obj->ctrl, str->text, str->len);
 	    }
-	    c_error("undefined function %s::%s", label, str->text);
-	    return (char *) NULL;
+	    if (symb == (dsymbol *) NULL) {
+		/*
+		 * It may seem strange to allow label::kfun, but remember that
+		 * they are supposed to be inherited by the auto object.
+		 */
+		index = kf_func(str->text);
+		if (index >= 0) {
+		    /* kfun call */
+		    *call = ((long) KFCALL << 24) | index;
+		    return KFUN(index).proto;
+		}
+		c_error("undefined function %s::%s", label, str->text);
+		return (char *) NULL;
+	    }
 	}
 	ohash = oh_new(OBJR(ctrl->inherits[UCHAR(symb->inherit)].oindex)->chain.name);
 	index = UCHAR(symb->index);
@@ -1340,7 +1346,7 @@ char *ctrl_ifcall(string *str, char *label, string **cfstr, long *call)
     if ((PROTO_FTYPE(proto) & T_TYPE) == T_CLASS) {
 	char *p;
 	Uint class;
- 
+
 	p = &PROTO_FTYPE(proto) + 1;
 	FETCH3U(p, class);
 	*cfstr = d_get_strconst(ctrl, class >> 16, class & 0xffff);

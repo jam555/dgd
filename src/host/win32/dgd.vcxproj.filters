@@ -82,9 +82,6 @@
     <ClCompile Include="..\..\kfun\builtin.c">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\kfun\debug.c">
-      <Filter>Source Files\kfun</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\kfun\extra.c">
       <Filter>Source Files\kfun</Filter>
     </ClCompile>
@@ -361,8 +358,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\comp\parser.y">
+    <CustomBuild Include="..\..\comp\parser.y">
       <Filter>Source Files\comp</Filter>
-    </None>
+    </CustomBuild>
   </ItemGroup>
 </Project>

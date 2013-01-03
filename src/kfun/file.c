@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -124,7 +124,7 @@ static void put(savecontext *x, char *buf, unsigned int len)
     while (x->bufsz + len > BUF_SIZE) {
 	chunk = BUF_SIZE - x->bufsz;
 	memcpy(x->buffer + x->bufsz, buf, chunk);
-	P_write(x->fd, x->buffer, BUF_SIZE);
+	(void) P_write(x->fd, x->buffer, BUF_SIZE);
 	buf += chunk;
 	len -= chunk;
 	x->bufsz = 0;
@@ -189,7 +189,7 @@ static void save_mapping (savecontext*, array*);
  */
 static void save_array(savecontext *x, array *a)
 {
-    char buf[16];
+    char buf[18];
     Uint i;
     value *v;
     xfloat flt;
@@ -256,7 +256,7 @@ static void save_array(savecontext *x, array *a)
  */
 static void save_mapping(savecontext *x, array *a)
 {
-    char buf[16];
+    char buf[18];
     Uint i;
     uindex n;
     value *v;
@@ -378,7 +378,7 @@ int kf_save_object(frame *f)
     control *ctrl;
     string *str;
     dinherit *inh;
-    char file[STRINGSZ], buf[16], tmp[STRINGSZ + 8], *_tmp;
+    char file[STRINGSZ], buf[18], tmp[STRINGSZ + 8], *_tmp;
     savecontext x;
     xfloat flt;
 
@@ -572,7 +572,7 @@ static void restore_error(restcontext *x, char *err)
 {
     error("Format error in \"/%s\", line %d: %s", x->file, x->line, err);
 }
- 
+
 /*
  * NAME:	restore_int()
  * DESCRIPTION:	restore an integer
@@ -713,7 +713,7 @@ static char *restore_array(restcontext *x, char *buf, value *val)
     unsigned short i;
     value *v;
     array *a;
-    
+
     /* match ({ */
     if (*buf++ != '(' || *buf++ != '{') {
 	restore_error(x, "'({' expected");
@@ -763,7 +763,7 @@ static char *restore_mapping(restcontext *x, char *buf, value *val)
     unsigned short i;
     value *v;
     array *a;
-    
+
     /* match ([ */
     if (*buf++ != '(' || *buf++ != '[') {
 	restore_error(x, "'([' expected");
@@ -915,7 +915,7 @@ int kf_restore_object(frame *f)
     }
     if (P_read(fd, buffer, (unsigned int) sbuf.st_size) != sbuf.st_size) {
 	/* read failed (should never happen, but...) */
-        P_close(fd);
+	P_close(fd);
 	if (onstack) {
 	    AFREE(buffer);
 	} else {

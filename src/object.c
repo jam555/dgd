@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -59,19 +59,20 @@ struct _objplane_ {
     uindex nobjects;		/* number of objects in object table */
     uindex nfreeobjs;		/* number of objects in free list */
     Uint ocount;		/* object creation count */
-    bool swap, dump, stop;	/* state vars */
+    bool swap, dump, incr, stop, boot; /* state vars */
     struct _objplane_ *prev;	/* previous object plane */
 };
 
 object *otable;			/* object table */
-char *ocmap;			/* object change map */
+Uint *ocmap;			/* object change map */
 bool obase;			/* object base plane flag */
-bool swap, dump, stop;		/* global state vars */
+bool swap, dump, incr, stop, boot; /* global state vars */
+static bool recount;		/* object counts recalculated? */
 static uindex otabsize;		/* size of object table */
 static uindex uobjects;		/* objects to check for upgrades */
 static objplane baseplane;	/* base object plane */
 static objplane *oplane;	/* current object plane */
-static char *omap;		/* object dump bitmap */
+static Uint *omap;		/* object dump bitmap */
 static Uint *counttab;		/* object count table */
 static object *upgraded;	/* list of upgraded objects */
 static uindex dobjects, dobject;/* objects to copy */
@@ -80,6 +81,7 @@ static uindex dchunksz;		/* copy chunk size */
 static Uint dinterval;		/* copy interval */
 static Uint dtime;		/* time copying started */
 Uint odcount;			/* objects destructed count */
+static uindex rotabsize;	/* size of object table at restore */
 
 /*
  * NAME:	object->init()
@@ -89,8 +91,8 @@ void o_init(unsigned int n, Uint interval)
 {
     otable = ALLOC(object, otabsize = n);
     memset(otable, '\0', n * sizeof(object));
-    ocmap = ALLOC(char, (n + 7) >> 3);
-    memset(ocmap, '\0', (n + 7) >> 3);
+    ocmap = ALLOC(Uint, BMAP(n));
+    memset(ocmap, '\0', BMAP(n) * sizeof(Uint));
     for (n = 4; n < otabsize; n <<= 1) ;
     baseplane.htab = ht_new(n >> 2, OBJHASHSZ, FALSE);
     baseplane.optab = (optable *) NULL;
@@ -99,16 +101,18 @@ void o_init(unsigned int n, Uint interval)
     baseplane.nobjects = 0;
     baseplane.nfreeobjs = 0;
     baseplane.ocount = 3;
-    baseplane.swap = baseplane.dump = baseplane.stop = FALSE;
+    baseplane.swap = baseplane.dump = baseplane.incr = baseplane.stop =
+		     baseplane.boot = FALSE;
     oplane = &baseplane;
-    omap = ALLOC(char, (n + 7) >> 3);
-    memset(omap, '\0', (n + 7) >> 3);
+    omap = ALLOC(Uint, BMAP(n));
+    memset(omap, '\0', BMAP(n) * sizeof(Uint));
     counttab = ALLOC(Uint, n);
     upgraded = (object *) NULL;
     uobjects = dobjects = mobjects = 0;
     dinterval = (interval * 19) / 20;
     odcount = 1;
     obase = TRUE;
+    recount = TRUE;
 }
 
 
@@ -345,7 +349,9 @@ void o_new_plane()
     p->ocount = oplane->ocount;
     p->swap = oplane->swap;
     p->dump = oplane->dump;
+    p->incr = oplane->incr;
     p->stop = oplane->stop;
+    p->boot = oplane->boot;
     p->prev = oplane;
     oplane = p;
 
@@ -478,7 +484,9 @@ void o_commit_plane()
     prev->ocount = oplane->ocount;
     prev->swap = oplane->swap;
     prev->dump = oplane->dump;
+    prev->incr = oplane->incr;
     prev->stop = oplane->stop;
+    prev->boot = oplane->boot;
     FREE(oplane);
     oplane = prev;
 
@@ -778,7 +786,7 @@ void o_del(object *obj, frame *f)
 	/* can happen if object selfdestructs in close()-on-destruct */
 	error("Destructing destructed object");
     }
-    i_odest(f, obj);	/* wipe out occurrances on the stack */
+    i_odest(f, obj);	/* wipe out occurrences on the stack */
     if (obj->data == (dataspace *) NULL && obj->dfirst != SW_UNUSED) {
 	o_dataspace(obj);	/* load dataspace now */
     }
@@ -850,6 +858,11 @@ char *o_builtin_name(Int type)
      * the base name is then: builtin/type
      */
     switch (type) {
+# ifdef CLOSURES
+    case BUILTIN_FUNCTION:
+	return BIPREFIX "function";
+# endif
+
 # ifdef DEBUG
     default:
 	fatal("unknown builtin type %d", type);
@@ -931,13 +944,14 @@ object *o_find(char *name, int access)
 
 /*
  * NAME:	object->restore_object()
- * DESCRIPTION:	restore an object from the dump file
+ * DESCRIPTION:	restore an object from the snapshot
  */
-static void o_restore_obj(object *obj)
+static void o_restore_obj(object *obj, bool cactive, bool dactive)
 {
     BCLR(omap, obj->index);
     --dobjects;
-    d_restore_obj(obj, counttab);
+    d_restore_obj(obj, (recount) ? counttab : (Uint *) NULL, rotabsize, cactive,
+		  dactive);
 }
 
 /*
@@ -955,7 +969,7 @@ control *o_control(object *obj)
     }
     if (o->ctrl == (control *) NULL) {
 	if (BTST(omap, o->index)) {
-	    o_restore_obj(o);
+	    o_restore_obj(o, TRUE, FALSE);
 	} else {
 	    o->ctrl = d_load_control(o);
 	}
@@ -973,7 +987,7 @@ dataspace *o_dataspace(object *o)
 {
     if (o->data == (dataspace *) NULL) {
 	if (BTST(omap, o->index)) {
-	    o_restore_obj(o);
+	    o_restore_obj(o, TRUE, TRUE);
 	} else {
 	    o->data = d_load_dataspace(o);
 	}
@@ -1180,8 +1194,10 @@ void o_clean()
 
     swap = baseplane.swap;
     dump = baseplane.dump;
+    incr = baseplane.incr;
     stop = baseplane.stop;
-    baseplane.swap = baseplane.dump = FALSE;
+    boot = baseplane.boot;
+    baseplane.swap = baseplane.dump = baseplane.incr = FALSE;
 }
 
 /*
@@ -1191,6 +1207,15 @@ void o_clean()
 uindex o_count()
 {
     return oplane->nobjects - oplane->nfreeobjs;
+}
+
+/*
+ * NAME:	object->dobjects()
+ * DESCRIPTION:	return the number of objects left to copy
+ */
+uindex o_dobjects()
+{
+    return dobjects;
 }
 
 
@@ -1203,6 +1228,16 @@ typedef struct {
 
 static char dh_layout[] = "uuui";
 
+typedef struct {
+    uindex nctrl;	/* objects left to copy */
+    uindex ndata;
+    uindex cobject;	/* object to copy */
+    uindex dobject;
+    Uint count;		/* object count */
+} map_header;
+
+static char mh_layout[] = "uuuui";
+
 # define CHUNKSZ	16384
 
 /*
@@ -1211,13 +1246,11 @@ static char dh_layout[] = "uuui";
  */
 static void o_sweep(uindex n)
 {
-    Uint count, *ct;
     object *obj;
 
     uobjects = n;
     dobject = 0;
-    count = 3;
-    for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
+    for (obj = otable; n > 0; obj++, --n) {
 	if (obj->count != 0) {
 	    if (obj->cfirst != SW_UNUSED || obj->dfirst != SW_UNUSED) {
 		BSET(omap, obj->index);
@@ -1228,7 +1261,21 @@ static void o_sweep(uindex n)
 	    BSET(omap, obj->index);
 	    dobjects++;
 	}
+    }
+    mobjects = dobjects;
+}
 
+/*
+ * NAME:	object->recount()
+ * DESCRIPTION:	update object counts
+ */
+static Uint o_recount(uindex n)
+{
+    Uint count, *ct;
+    object *obj;
+
+    count = 3;
+    for (obj = otable, ct = counttab; n > 0; obj++, ct++, --n) {
 	if (obj->count != 0) {
 	    *ct = obj->count;
 	    obj->count = count++;
@@ -1236,22 +1283,93 @@ static void o_sweep(uindex n)
 	    *ct = 2;
 	}
     }
-    mobjects = dobjects;
 
-    baseplane.ocount = count;
     odcount = 1;
+    recount = TRUE;
+    return count;
+}
+
+/*
+ * NAME:	uindex_compare
+ * DESCRIPTION: used by qsort to compare entries
+ */
+int uindex_compare(const void *pa, const void *pb)
+{
+    uindex a = *(uindex *)pa;
+    uindex b = *(uindex *)pb;
+
+    if (a > b) {
+	return 1;
+    } else if (a < b) {
+	return -1;
+    } else {
+	return 0;
+    }
+}
+
+/*
+ * NAME:	object->trim()
+ * DESCRIPTION:	trim free objects from the end of the object table
+ */
+void o_trim()
+{
+    uindex npurge;
+    uindex *entries;
+    uindex i;
+    uindex j;
+
+    if (!baseplane.nfreeobjs) {
+	/* nothing to trim */
+	return;
+    }
+
+    npurge = 0;
+    entries = ALLOC(uindex, baseplane.nfreeobjs);
+
+    j = baseplane.free;
+
+    /* 1. prepare a list of free objects */
+    for (i = 0; i < baseplane.nfreeobjs; i++) {
+	entries[i] = j;
+	j = otable[j].prev;
+    }
+
+    /* 2. sort indices from low to high */
+    qsort(entries, baseplane.nfreeobjs, sizeof(uindex), uindex_compare);
+
+    /* 3. trim the object table */
+    while (baseplane.nfreeobjs > 0 && entries[baseplane.nfreeobjs - 1] == baseplane.nobjects - 1) {
+	npurge++;
+	baseplane.nobjects--;
+	baseplane.nfreeobjs--;
+    }
+
+    memset(otable + baseplane.nobjects, '\0', npurge * sizeof(object));
+
+    /* 4. relink remaining free objects from low to high */
+    j = OBJ_NONE;
+
+    for (i = 0; i < baseplane.nfreeobjs; i++) {
+	uindex n = entries[baseplane.nfreeobjs - i - 1];
+	otable[n].prev = j;
+	j = n;
+    }
+
+    baseplane.free = j;
+    FREE(entries);
 }
 
 /*
  * NAME:	object->dump()
  * DESCRIPTION:	dump the object table
  */
-bool o_dump(int fd)
+bool o_dump(int fd, bool incr)
 {
     uindex i;
     object *o;
     unsigned int len, buflen;
     dump_header dh;
+    map_header mh;
     char buffer[CHUNKSZ];
 
     /* prepare header */
@@ -1286,21 +1404,51 @@ bool o_dump(int fd)
 	    buflen += len;
 	}
     }
+    if (buflen != 0 && P_write(fd, buffer, buflen) < 0) {
+	return FALSE;
+    }
 
-    o_sweep(baseplane.nobjects);
+    if (dobjects != 0) {
+	/*
+	 * partial snapshot: write bitmap and counts
+	 */
+	mh.nctrl = dobjects;
+	mh.ndata = dobjects;
+	mh.cobject = dobject;
+	mh.dobject = dobject;
+	mh.count = 0;
+	if (recount) {
+	    mh.count = baseplane.ocount;
+	}
+	if (P_write(fd, (char *) &mh, sizeof(map_header)) < 0 ||
+	    P_write(fd, (char *) (omap + BOFF(dobject)),
+		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
+	    P_write(fd, (char *) (omap + BOFF(dobject)),
+		    (BMAP(dh.nobjects) - BOFF(dobject)) * sizeof(Uint)) < 0 ||
+	    (mh.count != 0 &&
+	     P_write(fd, (char *) counttab, dh.nobjects * sizeof(Uint)) < 0)) {
+	    return FALSE;
+	}
+    }
 
-    return (buflen == 0 || P_write(fd, buffer, buflen) >= 0);
+    if (!incr) {
+	o_sweep(baseplane.nobjects);
+	baseplane.ocount = o_recount(baseplane.nobjects);
+	rotabsize = baseplane.nobjects;
+    }
+
+    return TRUE;
 }
 
 /*
  * NAME:	object->restore()
  * DESCRIPTION:	restore the object table
  */
-void o_restore(int fd, unsigned int rlwobj)
+void o_restore(int fd, unsigned int rlwobj, bool part)
 {
     uindex i;
     object *o;
-    Uint len, buflen;
+    Uint len, buflen, count;
     char *p;
     dump_header dh;
     char buffer[CHUNKSZ];
@@ -1317,9 +1465,11 @@ void o_restore(int fd, unsigned int rlwobj)
 
     /* read header and object table */
     conf_dread(fd, (char *) &dh, dh_layout, (Uint) 1);
+
     if (dh.nobjects > otabsize) {
-	error("Too many objects in restore file");
+	error("Too many objects in restore file (%u)", dh.nobjects);
     }
+
     conf_dread(fd, (char *) otable, OBJ_LAYOUT, (Uint) dh.nobjects);
     baseplane.free = dh.free;
     baseplane.nobjects = dh.nobjects;
@@ -1385,6 +1535,95 @@ void o_restore(int fd, unsigned int rlwobj)
     }
 
     o_sweep(baseplane.nobjects);
+
+    if (part) {
+	map_header mh;
+	off_t offset;
+	Uint *cmap, *dmap;
+	uindex nctrl, ndata;
+
+	conf_dread(fd, (char *) &mh, mh_layout, (Uint) 1);
+	nctrl = mh.nctrl;
+	ndata = mh.ndata;
+	count = mh.count;
+
+	cmap = dmap = (Uint *) NULL;
+	if (nctrl != 0) {
+	    cmap = ALLOC(Uint, BMAP(dh.nobjects));
+	    memset(cmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
+	    conf_dread(fd, (char *) (cmap + BOFF(mh.cobject)), "i",
+		       BMAP(dh.nobjects) - BOFF(mh.cobject));
+	}
+	if (ndata != 0) {
+	    dmap = ALLOC(Uint, BMAP(dh.nobjects));
+	    memset(dmap, '\0', BMAP(dh.nobjects) * sizeof(Uint));
+	    conf_dread(fd, (char *) (dmap + BOFF(mh.dobject)), "i",
+		       BMAP(dh.nobjects) - BOFF(mh.dobject));
+	}
+
+	if (count != 0) {
+	    conf_dread(fd, (char *) counttab, "i", dh.nobjects);
+	    recount = FALSE;
+	} else {
+	    count = o_recount(baseplane.nobjects);
+	}
+
+	/*
+	 * copy all objects from the secondary restore file
+	 */
+	offset = P_lseek(fd, (off_t) 0, SEEK_CUR);
+	i = mh.cobject;
+	while (nctrl > 0) {
+	    while (!BTST(cmap, i)) {
+		i++;
+	    }
+	    BCLR(cmap, i);
+
+	    o = OBJ(i);
+	    if (o->cfirst != SW_UNUSED) {
+		if (BTST(omap, i)) {
+		    BCLR(omap, i);
+		    --dobjects;
+		}
+		d_restore_ctrl(o, &sw_conv2);
+		d_swapout(1);
+	    }
+	    i++;
+	    --nctrl;
+	}
+	i = mh.dobject;
+	while (ndata > 0) {
+	    while (!BTST(dmap, i)) {
+		i++;
+	    }
+	    BCLR(dmap, i);
+
+	    o = OBJ(i);
+	    if (o->dfirst != SW_UNUSED) {
+		if (BTST(omap, i)) {
+		    BCLR(omap, i);
+		    --dobjects;
+		}
+		d_restore_data(o, counttab, dh.nobjects, &sw_conv2);
+		d_swapout(1);
+	    }
+	    i++;
+	    --ndata;
+	}
+
+	if (cmap != (Uint *) NULL) {
+	    FREE(cmap);
+	}
+	if (dmap != (Uint *) NULL) {
+	    FREE(dmap);
+	}
+	P_lseek(fd, offset, SEEK_SET);
+    } else {
+	count = o_recount(baseplane.nobjects);
+    }
+
+    baseplane.ocount = count;
+    rotabsize = baseplane.nobjects;
 }
 
 /*
@@ -1427,7 +1666,7 @@ bool o_copy(Uint time)
 	while (dobjects > n) {
 	    for (obj = OBJ(dobject); !BTST(omap, obj->index); obj++) ;
 	    dobject = obj->index + 1;
-	    o_restore_obj(obj);
+	    o_restore_obj(obj, FALSE, FALSE);
 	    if (time == 0) {
 		d_swapout(1);
 	    }
@@ -1438,12 +1677,17 @@ bool o_copy(Uint time)
     if (dobjects == 0) {
 	for (n = uobjects, obj = otable; n > 0; --n, obj++) {
 	    if (obj->count != 0 && (obj->flags & O_LWOBJ)) {
-		tmpl = obj;
-		while (tmpl->prev != OBJ_NONE && counttab[tmpl->prev] != 2) {
-		    tmpl = OBJ(tmpl->prev);
-		}
-		if (o_purge_upgrades(tmpl)) {
-		    tmpl->prev = OBJ_NONE;
+		for (tmpl = obj; tmpl->prev != OBJ_NONE; tmpl = OBJ(tmpl->prev))
+		{
+		    if (!(OBJ(tmpl->prev)->flags & O_LWOBJ)) {
+			break;
+		    }
+		    if (counttab[tmpl->prev] == 2) {
+			if (o_purge_upgrades(tmpl)) {
+			    tmpl->prev = OBJ_NONE;
+			}
+			break;
+		    }
 		}
 	    }
 	}
@@ -1471,16 +1715,21 @@ void swapout()
  * NAME:	dump_state()
  * DESCRIPTION:	indicate that the state must be dumped
  */
-void dump_state()
+void dump_state(bool incr)
 {
     oplane->dump = TRUE;
+    oplane->incr = incr;
 }
 
 /*
  * NAME:	finish()
  * DESCRIPTION:	indicate that the program must finish
  */
-void finish()
+void finish(bool boot)
 {
+    if (boot && !oplane->dump) {
+	error("Hotbooting without snapshot");
+    }
     oplane->stop = TRUE;
+    oplane->boot = boot;
 }

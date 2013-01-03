@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -19,43 +19,86 @@
 
 # define I_INSTR_MASK		0x1f	/* instruction mask */
 
-# define I_PUSH_ZERO		 0
-# define I_PUSH_ONE		 1
-# define I_PUSH_INT1		 2	/* 1 signed */
-# define I_PUSH_INT4		 3	/* 4 signed */
-# define I_PUSH_FLOAT		 4	/* 6 unsigned */
-# define I_PUSH_STRING		 5	/* 1 unsigned */
-# define I_PUSH_NEAR_STRING	 6	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_FAR_STRING	 7	/* 1 unsigned, 2 unsigned */
-# define I_PUSH_LOCAL		 8	/* 1 signed */
-# define I_PUSH_GLOBAL		 9	/* 1 unsigned */
-# define I_PUSH_FAR_GLOBAL	10	/* 1 unsigned, 1 unsigned */
-# define I_PUSH_LOCAL_LVAL	11	/* 1 signed */
-# define I_PUSH_GLOBAL_LVAL	12	/* 1 unsigned */
-# define I_PUSH_FAR_GLOBAL_LVAL	13	/* 1 unsigned, 1 unsigned */
-# define I_INDEX		14
-# define I_INDEX_LVAL		15
-# define I_AGGREGATE		16	/* 1 unsigned, 2 unsigned */
-# define I_SPREAD		17	/* 1 signed */
-# define I_CAST			18	/* 1 unsigned */
-# define I_DUP			19
-# define I_STORE		20
-# define I_JUMP			21	/* 2 unsigned */
-# define I_JUMP_ZERO		22	/* 2 unsigned */
-# define I_JUMP_NONZERO		23	/* 2 unsigned */
-# define I_SWITCH		24	/* n */
-# define I_CALL_KFUNC		25	/* 1 unsigned (+ 1 unsigned) */
-# define I_CALL_AFUNC		26	/* 1 unsigned, 1 unsigned */
-# define I_CALL_DFUNC		27	/* 1 unsigned, 1 unsigned, 1 unsigned */
-# define I_CALL_FUNC		28	/* 2 unsigned, 1 unsigned */
-# define I_CATCH		29	/* 2 unsigned */
-# define I_RLIMITS		30
-# define I_RETURN		31
+# define II_PUSH_ZERO		  0
+# define II_PUSH_ONE		  1
+# define II_PUSH_INT1		  2	/* 1 signed */
+# define II_PUSH_INT4		  3	/* 4 signed */
+# define II_PUSH_FLOAT		  4	/* 6 unsigned */
+# define II_PUSH_STRING		  5	/* 1 unsigned */
+# define II_PUSH_NEAR_STRING	  6	/* 1 unsigned, 1 unsigned */
+# define II_PUSH_FAR_STRING	  7	/* 1 unsigned, 2 unsigned */
+# define II_PUSH_LOCAL		  8	/* 1 signed */
+# define II_PUSH_GLOBAL		  9	/* 1 unsigned */
+# define II_PUSH_FAR_GLOBAL	 10	/* 1 unsigned, 1 unsigned */
+# define II_PUSH_LOCAL_LVAL	 11	/* 1 signed */
+# define II_PUSH_GLOBAL_LVAL	 12	/* 1 unsigned */
+# define II_PUSH_FAR_GLOBAL_LVAL 13	/* 1 unsigned, 1 unsigned */
+# define II_INDEX		 14
+# define II_INDEX_LVAL		 15
+# define II_AGGREGATE		 16	/* 1 unsigned, 2 unsigned */
+# define II_SPREAD		 17	/* 1 signed */
+# define II_CAST		 18	/* 1 unsigned */
+# define II_DUP			 19
+# define II_STORE		 20
+# define II_JUMP		 21	/* 2 unsigned */
+# define II_JUMP_ZERO		 22	/* 2 unsigned */
+# define II_JUMP_NONZERO	 23	/* 2 unsigned */
+# define II_SWITCH		 24	/* n */
+# define II_CALL_KFUNC		 25	/* 1 unsigned (+ 1 unsigned) */
+# define II_CALL_AFUNC		 26	/* 1 unsigned, 1 unsigned */
+# define II_CALL_DFUNC		 27	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define II_CALL_FUNC		 28	/* 2 unsigned, 1 unsigned */
+# define II_CATCH		 29	/* 2 unsigned */
+# define II_RLIMITS		 30
+# define II_RETURN		 31
+
+# define I_EINSTR_MASK		0x3f	/* extended instruction mask */
+
+# define I_PUSH_INT1		0x00	/* 1 signed */
+# define I_PUSH_INT4		0x01	/* 4 signed */
+# define I_PUSH_FLOAT6		0x03	/* 6 unsigned */
+# define I_PUSH_STRING		0x04	/* 1 unsigned */
+# define I_PUSH_NEAR_STRING	0x24	/* 1 unsigned, 1 unsigned */
+# define I_PUSH_FAR_STRING	0x05	/* 1 unsigned, 2 unsigned */
+# define I_PUSH_LOCAL		0x25	/* 1 signed */
+# define I_PUSH_GLOBAL		0x06	/* 1 unsigned */
+# define I_PUSH_FAR_GLOBAL	0x26	/* 1 unsigned, 1 unsigned */
+# define I_INDEX		0x07
+# define I_INDEX2		0x08
+# define I_SPREAD		0x28	/* 1 signed (+ 1+3 unsigned) */
+# define I_AGGREGATE		0x09	/* 1 unsigned, 2 unsigned */
+# define I_CAST			0x0a	/* 1+3 unsigned */
+# define I_CALL_CKFUNC		0x10	/* 1 unsigned, 1 unsigned */
+# define I_STORE_LOCAL		0x11	/* 1 signed */
+# define I_STORE_GLOBAL		0x12	/* 1 unsigned */
+# define I_STORE_FAR_GLOBAL	0x13	/* 1 unsigned, 1 unsigned */
+# define I_STORE_INDEX		0x14
+# define I_STORE_LOCAL_INDEX	0x15	/* 1 signed */
+# define I_STORE_GLOBAL_INDEX	0x16	/* 1 unsigned, 1 unsigned */
+# define I_STORE_INDEX_INDEX	0x17
+# define I_JUMP_ZERO		0x18	/* 2 unsigned */
+# define I_JUMP_NONZERO		0x38	/* 2 unsigned */
+# define I_JUMP			0x19	/* 2 unsigned */
+# define I_SWITCH		0x39	/* n */
+# define I_CALL_KFUNC		0x1a	/* 1 unsigned (+ 1 unsigned) */
+# define I_CALL_AFUNC		0x1b	/* 1 unsigned, 1 unsigned */
+# define I_CALL_DFUNC		0x1c	/* 1 unsigned, 1 unsigned, 1 unsigned */
+# define I_CALL_FUNC		0x1d	/* 2 unsigned, 1 unsigned */
+# define I_CATCH		0x1e	/* 2 unsigned */
+# define I_RLIMITS		0x1f
+# define I_RETURN		0x3f
 
 # define I_LINE_MASK		0xc0	/* line add bits */
 # define I_POP_BIT		0x20	/* pop 1 after instruction */
 # define I_TYPE_BIT		I_POP_BIT /* lvalue typechecks assignment */
 # define I_LINE_SHIFT		6
+
+# define LVAL_LOCAL		0
+# define LVAL_GLOBAL		1
+# define LVAL_INDEX		2
+# define LVAL_LOCAL_INDEX	3
+# define LVAL_GLOBAL_INDEX	4
+# define LVAL_INDEX_INDEX	5
 
 
 # define FETCH1S(pc)	SCHAR(*(pc)++)
@@ -111,6 +154,7 @@
 
 # define TYPENAMES	{ "nil", "int", "float", "string", "object", \
 			  "array", "mapping", "lwobject", "mixed", "void" }
+# define TNBUFSIZE	24
 
 # define VAL_NIL(v)	((v)->type == nil_type && (v)->u.number == 0)
 # define VAL_TRUE(v)	((v)->u.number != 0 || (v)->type > T_FLOAT ||	\
@@ -230,7 +274,7 @@ extern void	i_copy		(value*, value*, unsigned int);
 extern void	i_grow_stack	(frame*, int);
 extern void	i_push_value	(frame*, value*);
 extern void	i_pop		(frame*, int);
-extern void	i_reverse	(frame*, int);
+extern value   *i_reverse	(frame*, int);
 extern void	i_odest		(frame*, object*);
 extern void	i_string	(frame*, int, unsigned int);
 extern void	i_aggregate	(frame*, unsigned int);
@@ -239,12 +283,15 @@ extern int	i_spread	(frame*, int, int, Uint);
 extern void	i_global	(frame*, int, int);
 extern void	i_global_lvalue	(frame*, int, int, int, Uint);
 extern void	i_index		(frame*);
+extern void	i_index2	(frame*, value*, value*, value*);
 extern void	i_index_lvalue	(frame*, int, Uint);
 extern char    *i_typename	(char*, unsigned int);
 extern char    *i_classname	(frame*, Uint);
 extern int	i_instanceof	(frame*, unsigned int, Uint);
 extern void	i_cast		(frame*, value*, unsigned int, Uint);
 extern void	i_dup		(frame*);
+extern void	i_store_global	(frame*, int, int, value*, value*);
+extern bool	i_store_index	(frame*, value*, value*, value*, value*);
 extern void	i_store		(frame*);
 extern Int	i_get_depth	(frame*);
 extern Int	i_get_ticks	(frame*);

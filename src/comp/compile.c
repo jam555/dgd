@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -36,11 +36,11 @@
 # include <stdarg.h>
 
 # define COND_CHUNK	16
-# define COND_BMAP	((MAX_LOCALS + 1) >> 3)
+# define COND_BMAP	BMAP(MAX_LOCALS)
 
 typedef struct _cond_ {
     struct _cond_ *prev;	/* surrounding conditional */
-    char init[COND_BMAP];	/* initialize variable bitmap */
+    Uint init[COND_BMAP];	/* initialize variable bitmap */
 } cond;
 
 typedef struct _cchunk_ {
@@ -105,9 +105,9 @@ static void cond_new(cond *c2)
     }
     c->prev = thiscond;
     if (c2 != (cond *) NULL) {
-	memcpy(c->init, c2->init, COND_BMAP);
+	memcpy(c->init, c2->init, COND_BMAP * sizeof(Uint));
     } else {
-	memset(c->init, '\0', COND_BMAP);
+	memset(c->init, '\0', COND_BMAP * sizeof(Uint));
     }
     thiscond = c;
 }
@@ -132,7 +132,7 @@ static void cond_del()
  */
 static void cond_match(cond *c1, cond *c2, cond *c3)
 {
-    char *p, *q, *r;
+    Uint *p, *q, *r;
     int i;
 
     p = c1->init;
@@ -555,7 +555,7 @@ extern int yyparse (void);
  * NAME:	compile->compile()
  * DESCRIPTION:	compile an LPC file
  */
-object *c_compile(frame *f, char *file, object *obj, string **strs, 
+object *c_compile(frame *f, char *file, object *obj, string **strs,
 	int nstr, int iflag)
 {
     context c;
@@ -787,11 +787,11 @@ string *c_objecttype(node *n)
  * NAME:	compile->decl_func()
  * ACTION:	declare a function
  */
-static void c_decl_func(unsigned short class, node *type, string *str, 
+static void c_decl_func(unsigned short class, node *type, string *str,
 	node *formals, bool function)
 {
-    char proto[5 + (MAX_LOCALS + 1) * 3];
-    char tnbuf[17];
+    char proto[5 + (MAX_LOCALS + 1) * 4];
+    char tnbuf[TNBUFSIZE];
     char *p, t;
     int nargs, vargs;
     long l;
@@ -923,10 +923,10 @@ static void c_decl_func(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_var()
  * DESCRIPTION:	declare a variable
  */
-static void c_decl_var(unsigned short class, node *type, string *str, 
+static void c_decl_var(unsigned short class, node *type, string *str,
 	bool global)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     if ((type->mod & T_TYPE) == T_VOID) {
 	c_error("invalid type for variable %s (%s)", str->text,
@@ -950,7 +950,7 @@ static void c_decl_var(unsigned short class, node *type, string *str,
  * NAME:	compile->decl_list()
  * DESCRIPTION:	handle a list of declarations
  */
-static void c_decl_list(unsigned short class, node *type, node *list, 
+static void c_decl_list(unsigned short class, node *type, node *list,
 	bool global)
 {
     node *n;
@@ -1351,7 +1351,7 @@ node *c_donecatch(node *n1, node *n2)
  */
 void c_startswitch(node *n, int typechecked)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     switch_list = loop_new(switch_list);
     switch_list->type = T_MIXED;
@@ -1399,7 +1399,7 @@ static int cmp(cvoid *cv1, cvoid *cv2)
  */
 node *c_endswitch(node *expr, node *stmt)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     node **v, **w, *n;
     unsigned short i, size;
     long l;
@@ -1507,7 +1507,7 @@ node *c_endswitch(node *expr, node *stmt)
 		/* determine the number of bytes per case */
 		l = v[0]->l.left->l.number;
 		if (l < 0) {
-		    l = 1 - l;
+		    l = -1 - l;
 		}
 		if (l < w[0]->l.left->r.number) {
 		    l = w[0]->l.left->r.number;
@@ -1745,7 +1745,7 @@ node *c_continue()
  */
 node *c_return(node *n, int typechecked)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     if (n == (node *) NULL) {
 	if (typechecked && ftype != T_VOID) {
@@ -1803,87 +1803,87 @@ node *c_endcompound(node *n)
 
     if (n != (node *) NULL) {
       if (n->type == N_PAIR) {
-          flags = n->flags & (F_REACH | F_END);
-          n = revert_list(n);
-          n->flags = (n->flags & ~F_END) | flags;
+	  flags = n->flags & (F_REACH | F_END);
+	  n = revert_list(n);
+	  n->flags = (n->flags & ~F_END) | flags;
       }
       n = node_mon(N_COMPOUND, 0, n);
       n->flags = n->l.left->flags;
 
       if (thisblock->nvars != 0) {
-          node *v, *l, *z, *f, *p;
-          int i;
+	  node *v, *l, *z, *f, *p;
+	  int i;
 
-          /*
-           * create variable type definitions and implicit initializers
-           */
-          l = z = f = p = (node *) NULL;
-          i = thisblock->vindex;
-          if (i < nparams) {
-              i = nparams;
-          }
-          while (i < thisblock->vindex + thisblock->nvars) {
-              l = c_concat(node_var(variables[i].type, i), l);
+	  /*
+	   * create variable type definitions and implicit initializers
+	   */
+	  l = z = f = p = (node *) NULL;
+	  i = thisblock->vindex;
+	  if (i < nparams) {
+	      i = nparams;
+	  }
+	  while (i < thisblock->vindex + thisblock->nvars) {
+	      l = c_concat(node_var(variables[i].type, i), l);
 
-              if (variables[i].unset) {
-                  switch (variables[i].type) {
-                  case T_INT:
-                      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (z == (node *) NULL) {
-                          z = node_int(0);
-                          z->line = 0;
-                      }
-                      z = node_bin(N_ASSIGN, T_INT, v, z);
-                      z->line = 0;
-                      break;
+	      if (switch_list != (loop *) NULL || variables[i].unset) {
+		  switch (variables[i].type) {
+		  case T_INT:
+		      v = node_mon(N_LOCAL, T_INT, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (z == (node *) NULL) {
+			  z = node_int(0);
+			  z->line = 0;
+		      }
+		      z = node_bin(N_ASSIGN, T_INT, v, z);
+		      z->line = 0;
+		      break;
 
-                  case T_FLOAT:
-                      v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (f == (node *) NULL) {
-                          xfloat flt;
+		  case T_FLOAT:
+		      v = node_mon(N_LOCAL, T_FLOAT, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (f == (node *) NULL) {
+			  xfloat flt;
 
-                          FLT_ZERO(flt.high, flt.low);
-                          f = node_float(&flt);
-                          f->line = 0;
-                      }
-                      f = node_bin(N_ASSIGN, T_FLOAT, v, f);
-                      f->line = 0;
-                      break;
+			  FLT_ZERO(flt.high, flt.low);
+			  f = node_float(&flt);
+			  f->line = 0;
+		      }
+		      f = node_bin(N_ASSIGN, T_FLOAT, v, f);
+		      f->line = 0;
+		      break;
 
-                  default:
-                      v = node_mon(N_LOCAL, T_MIXED, (node *) NULL);
-                      v->line = 0;
-                      v->r.number = i;
-                      if (p == (node *) NULL) {
-                          p = node_nil();
-                          p->line = 0;
-                      }
-                      p = node_bin(N_ASSIGN, T_MIXED, v, p);
-                      p->line = 0;
-                      break;
-                  }
-              }
-              i++;
-          }
+		  default:
+		      v = node_mon(N_LOCAL, T_MIXED, (node *) NULL);
+		      v->line = 0;
+		      v->r.number = i;
+		      if (p == (node *) NULL) {
+			  p = node_nil();
+			  p->line = 0;
+		      }
+		      p = node_bin(N_ASSIGN, T_MIXED, v, p);
+		      p->line = 0;
+		      break;
+		  }
+	      }
+	      i++;
+	  }
 
-          /* add vartypes and initializers to compound statement */
-          if (z != (node *) NULL) {
-              l = c_concat(c_exp_stmt(z), l);
-          }
-          if (f != (node *) NULL) {
-              l = c_concat(c_exp_stmt(f), l);
-          }
-          if (p != (node *) NULL) {
-              l = c_concat(c_exp_stmt(p), l);
-          }
-          n->r.right = l;
-          if (switch_list != (loop *) NULL) {
-              switch_list->vlist = c_concat(l, switch_list->vlist);
-          }
+	  /* add vartypes and initializers to compound statement */
+	  if (z != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(z), l);
+	  }
+	  if (f != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(f), l);
+	  }
+	  if (p != (node *) NULL) {
+	      l = c_concat(c_exp_stmt(p), l);
+	  }
+	  n->r.right = l;
+	  if (switch_list != (loop *) NULL) {
+	      switch_list->vlist = c_concat(l, switch_list->vlist);
+	  }
       }
     }
 
@@ -2000,9 +2000,9 @@ static bool lvalue(node *n)
  * NAME:	funcall()
  * DESCRIPTION:	handle a function call
  */
-static node *funcall(node *call, node *args)
+static node *funcall(node *call, node *args, int funcptr)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     int n, nargs, t;
     node *func, **argv, **arg;
     char *argp, *proto, *fname;
@@ -2024,6 +2024,17 @@ static node *funcall(node *call, node *args)
     call->r.right = args;
     argv = &call->r.right;
 
+# ifdef CLOSURES
+    if (funcptr) {
+	if (func->r.number >> 24 == KFCALL) {
+	    c_error("cannot create pointer to kfun");
+	}
+	if (PROTO_CLASS(proto) & C_PRIVATE) {
+	    c_error("cannot create pointer to private function");
+	}
+    }
+# endif
+
     /*
      * check function arguments
      */
@@ -2033,7 +2044,7 @@ static node *funcall(node *call, node *args)
     argp = PROTO_ARGS(proto);
     for (n = 1; n <= nargs; n++) {
 	if (args == (node *) NULL) {
-	    if (n <= PROTO_NARGS(proto)) {
+	    if (n <= PROTO_NARGS(proto) && !funcptr) {
 		c_error("too few arguments for function %s", fname);
 	    }
 	    break;
@@ -2108,7 +2119,7 @@ static node *funcall(node *call, node *args)
  */
 node *c_funcall(node *func, node *args)
 {
-    return funcall(func, revert_list(args));
+    return funcall(func, revert_list(args), FALSE);
 }
 
 /*
@@ -2123,7 +2134,95 @@ node *c_arrow(node *other, node *func, node *args)
 	args = node_bin(N_PAIR, 0, func, revert_list(args));
     }
     return funcall(c_flookup(node_str(str_new("call_other", 10L)), FALSE),
-		   node_bin(N_PAIR, 0, other, args));
+		   node_bin(N_PAIR, 0, other, args), FALSE);
+}
+
+/*
+ * NAME:	compile->address()
+ * DESCRIPTION:	handle &func()
+ */
+node *c_address(node *func, node *args, int typechecked)
+{
+# ifdef CLOSURES
+    args = revert_list(args);
+    funcall(c_flookup(func, typechecked), args, TRUE);	/* check only */
+
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, args);
+    }
+    func = funcall(c_flookup(node_str(str_new("new.function", 12L)), FALSE),
+		   args, FALSE);
+    func->class = str_new(BIPREFIX "function", BIPREFIXLEN + 8);
+    return func;
+# else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
+    c_error("syntax error");
+    return (node *) NULL;
+# endif
+}
+
+/*
+ * NAME:	compile->extend()
+ * DESCRIPTION:	handle &(*func)()
+ */
+node *c_extend(node *func, node *args, int typechecked)
+{
+# ifdef CLOSURES
+    if (typechecked && func->mod != T_MIXED) {
+	if (func->mod != T_OBJECT ||
+	    (func->class != NULL &&
+	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	    c_error("bad argument 1 for function * (needs function)");
+	}
+    }
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
+    }
+    return funcall(c_flookup(node_str(str_new("extend.function", 15L)), FALSE),
+		   args, FALSE);
+# else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
+    c_error("syntax error");
+    return (node *) NULL;
+# endif
+}
+
+/*
+ * NAME:	compile->call()
+ * DESCRIPTION:	handle (*func)()
+ */
+node *c_call(node *func, node *args, int typechecked)
+{
+# ifdef CLOSURES
+    if (typechecked && func->mod != T_MIXED) {
+	if (func->mod != T_OBJECT ||
+	    (func->class != NULL &&
+	     strcmp(func->class->text, BIPREFIX "function") != 0)) {
+	    c_error("bad argument 1 for function * (needs function)");
+	}
+    }
+    if (args == (node *) NULL) {
+	args = func;
+    } else {
+	args = node_bin(N_PAIR, 0, func, revert_list(args));
+    }
+    return funcall(c_flookup(node_str(str_new("call.function", 13L)), FALSE),
+		   args, FALSE);
+# else
+    UNREFERENCED_PARAMETER(func);
+    UNREFERENCED_PARAMETER(args);
+    UNREFERENCED_PARAMETER(typechecked);
+    c_error("syntax error");
+    return (node *) NULL;
+# endif
 }
 
 /*
@@ -2338,21 +2437,21 @@ static void c_lval_aggr(node **n)
       c_error("no lvalues in aggregate");
     } else {
       while (n != (node **) NULL) {
-          if ((*n)->type == N_PAIR) {
-              m = &(*n)->l.left;
-              n = &(*n)->r.right;
-          } else {
-              m = n;
-              n = (node **) NULL;
-          }
-          if (!lvalue(*m)) {
-              c_error("bad lvalue in aggregate");
-              *m = node_mon(N_FAKE, T_MIXED, *m);
-          }
-          if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
-              BSET(thiscond->init, (*m)->r.number);
-              --variables[(*m)->r.number].unset;
-          }
+	  if ((*n)->type == N_PAIR) {
+	      m = &(*n)->l.left;
+	      n = &(*n)->r.right;
+	  } else {
+	      m = n;
+	      n = (node **) NULL;
+	  }
+	  if (!lvalue(*m)) {
+	      c_error("bad lvalue in aggregate");
+	      *m = node_mon(N_FAKE, T_MIXED, *m);
+	  }
+	  if ((*m)->type == N_LOCAL && !BTST(thiscond->init, (*m)->r.number)) {
+	      BSET(thiscond->init, (*m)->r.number);
+	      --variables[(*m)->r.number].unset;
+	  }
       }
     }
 }

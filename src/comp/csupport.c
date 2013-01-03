@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -45,7 +45,7 @@ static char *driver_name;	/* name of driver object */
  * NAME:	precomp->inherits()
  * DESCRIPTION:	handle inherited objects
  */
-static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits, 
+static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits,
 	Uint compiled)
 {
     Uint cc;
@@ -91,7 +91,7 @@ static bool pc_inherits(dinherit *inh, pcinherit *pcinh, int ninherits,
  * NAME:	precomp->funcdefs()
  * DESCRIPTION:	handle function definitions
  */
-static void pc_funcdefs(char *program, dfuncdef *funcdefs, 
+static void pc_funcdefs(char *program, dfuncdef *funcdefs,
 	unsigned short nfuncdefs, Uint nfuncs)
 {
     char *p;
@@ -645,7 +645,7 @@ static bool dstrcmp(dstrconst *dstrings, dstrconst *strings, int nstrings)
  * NAME:	func1cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog, 
+static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog,
 	int nfuncdefs)
 {
     while (nfuncdefs != 0) {
@@ -666,7 +666,7 @@ static bool func1cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *prog,
  * NAME:	func2cmp()
  * DESCRIPTION:	compare function tables
  */
-static bool func2cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *dprog, 
+static bool func2cmp(dfuncdef *dfuncdefs, dfuncdef *funcdefs, char *dprog,
 	char *prog, int nfuncdefs)
 {
     while (nfuncdefs != 0) {
@@ -765,7 +765,7 @@ void pc_restore(int fd, int conv)
 	conf_dread(fd, (char *) dinh, di_layout, dh.ninherits);
 	imap = ALLOCA(char, dh.imapsz);
 	if (P_read(fd, imap, dh.imapsz) != dh.imapsz) {
-	    fatal("cannot read from dump file");
+	    fatal("cannot read from snapshot");
 	}
 	if (dh.nstrings != 0) {
 	    strings = ALLOCA(dstrconst, dh.nstrings);
@@ -773,7 +773,7 @@ void pc_restore(int fd, int conv)
 	    if (dh.stringsz != 0) {
 		stext = ALLOCA(char, dh.stringsz);
 		if (P_read(fd, stext, dh.stringsz) != dh.stringsz) {
-		    fatal("cannot read from dump file");
+		    fatal("cannot read from snapshot");
 		}
 	    }
 	}
@@ -788,7 +788,7 @@ void pc_restore(int fd, int conv)
 	if (dh.nfuncalls != 0) {
 	    funcalls = ALLOCA(char, 2 * dh.nfuncalls);
 	    if (P_read(fd, funcalls, 2 * dh.nfuncalls) != 2 * dh.nfuncalls) {
-		fatal("cannot read from dump file");
+		fatal("cannot read from snapshot");
 	    }
 	}
 

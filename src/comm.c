@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# define INCLUDE_FILE_IO
 # define INCLUDE_TELNET
 # include "dgd.h"
 # include "str.h"
@@ -41,11 +42,7 @@ typedef struct _user_ {
     struct _user_ *prev;	/* preceding user */
     struct _user_ *next;	/* next user */
     struct _user_ *flush;	/* next in flush list */
-#ifdef NETWORK_EXTENSIONS
     short flags;		/* connection flags */
-#else
-    char flags;			/* connection flags */
-#endif
     char state;			/* telnet state */
     short newlines;		/* # of newlines in input buffer */
     connection *conn;		/* connection */
@@ -56,27 +53,23 @@ typedef struct _user_ {
     ssizet osdone;		/* bytes of output string done */
 } user;
 
-#ifdef NETWORK_EXTENSIONS
-extern connection *conn_accept(connection *conn);
-#endif
-
 /* flags */
-# define CF_BINARY	0x00	/* binary connection */
-# define  CF_UDP	0x02	/* receive UDP datagrams */
-# define  CF_UDPDATA	0x04	/* UDP data received */
-# define CF_TELNET	0x01	/* telnet connection */
-# define  CF_ECHO	0x02	/* client echoes input */
-# define  CF_GA		0x04	/* send GA after prompt */
-# define  CF_PROMPT	0x08	/* prompt in telnet output */
-# define CF_BLOCKED	0x10	/* input blocked */
-# define CF_FLUSH	0x20	/* in flush list */
-# define CF_OUTPUT	0x40	/* pending output */
-# define CF_ODONE	0x80	/* output done */
+# define CF_BINARY	0x0000	/* binary connection */
+# define  CF_UDP	0x0002	/* receive UDP datagrams */
+# define  CF_UDPDATA	0x0004	/* UDP data received */
+# define CF_TELNET	0x0001	/* telnet connection */
+# define  CF_ECHO	0x0002	/* client echoes input */
+# define  CF_GA		0x0004	/* send GA after prompt */
+# define  CF_PROMPT	0x0008	/* prompt in telnet output */
+# define CF_BLOCKED	0x0010	/* input blocked */
+# define CF_FLUSH	0x0020	/* in flush list */
+# define CF_OUTPUT	0x0040	/* pending output */
+# define CF_ODONE	0x0080	/* output done */
+# define CF_OPENDING	0x0100	/* waiting for connect() to complete */
 
 #ifdef NETWORK_EXTENSIONS
-# define CF_PORT	0x0100	/* port (listening) connection */
-# define CF_DATAGRAM	0x0200	/* independent UDP socket */
-# define CF_OPENDING	0x0400	/* waiting for connect() to complete */
+# define CF_PORT	0x0200	/* port (listening) connection */
+# define CF_DATAGRAM	0x0400	/* independent UDP socket */
 #endif
 
 /* state */
@@ -94,6 +87,7 @@ static user *users;		/* array of users */
 static user *lastuser;		/* last user checked */
 static user *freeuser;		/* linked list of free users */
 static user *flush;		/* flush list */
+static user *outbound;		/* pending outbound list */
 static int maxusers;		/* max # of users */
 #ifdef NETWORK_EXTENSIONS
 static int maxports;		/* max # of ports */
@@ -102,9 +96,6 @@ static int nports;		/* # of ports */
 static int nusers;		/* # of users */
 static int odone;		/* # of users with output done */
 static long newlines;		/* # of newlines in all input buffers */
-#ifdef NETWORK_EXTENSIONS
-static short opending;		/* # of users with connect() pending */
-#endif
 static uindex this_user;	/* current user */
 static int ntport, nbport;	/* # telnet/binary ports */
 static int nexttport;		/* next telnet port to check */
@@ -116,12 +107,12 @@ static char ayt[22];		/* are you there? */
  * DESCRIPTION:	initialize communications
  */
 #ifdef NETWORK_EXTENSIONS
-bool comm_init(int n, int p, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, int p, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #else
-bool comm_init(int n, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #endif
 {
@@ -131,32 +122,24 @@ bool comm_init(int n, char **thosts, char **bhosts,
 #ifdef NETWORK_EXTENSIONS
     maxusers = n;
     maxports = p;
-    users = ALLOC(user, (maxusers + maxports));
+    n += p;
+    users = ALLOC(user, n);
 #else
     users = ALLOC(user, maxusers = n);
 #endif
-#ifdef NETWORK_EXTENSIONS
-    for (i = (n + p), usr = users + i; i > 0; --i) {
-#else
     for (i = n, usr = users + i; i > 0; --i) {
-#endif
 	--usr;
 	usr->oindex = OBJ_NONE;
 	usr->next = usr + 1;
     }
-#ifdef NETWORK_EXTENSIONS
-    users[n + p - 1].next = (user *) NULL;
-#else
     users[n - 1].next = (user *) NULL;
-#endif
 
     freeuser = usr;
     lastuser = (user *) NULL;
-    flush = (user *) NULL;
+    flush = outbound = (user *) NULL;
     nusers = odone = newlines = 0;
 #ifdef NETWORK_EXTENSIONS
     nports = 0;
-    opending = 0;
 #endif
     this_user = OBJ_NONE;
 
@@ -164,17 +147,12 @@ bool comm_init(int n, char **thosts, char **bhosts,
 
     nexttport = nextbport = 0;
 
-#ifdef NETWORK_EXTENSIONS
-    return conn_init(n+p, thosts, bhosts, tports, bports, ntport = ntelnet,
-		     nbport = nbinary);
-#else
     return conn_init(n, thosts, bhosts, tports, bports, ntport = ntelnet,
 		     nbport = nbinary);
-#endif
 }
 
 #ifdef NETWORK_EXTENSIONS
-void comm_openport(frame *f, object *obj, unsigned char protocol, 
+void comm_openport(frame *f, object *obj, unsigned char protocol,
 	unsigned short portnr)
 {
     connection *conn;
@@ -187,20 +165,20 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
 
     flags = 0;
 
-    if (nports >= maxports) 
+    if (nports >= maxports)
 	error("Max number of port objects exceeded");
 
     switch (protocol)
     {
     case P_TELNET:
-	flags=CF_TELNET|CF_PORT;
-	protocol=P_TCP;
+	flags = CF_TELNET | CF_PORT;
+	protocol = P_TCP;
 	break;
     case P_UDP:
-	flags=CF_DATAGRAM|CF_PORT;
+	flags = CF_DATAGRAM | CF_PORT;
 	break;
     case P_TCP:
-	flags=CF_PORT;
+	flags = CF_PORT;
 	break;
     default:
 	error("Unknown protocol");
@@ -262,6 +240,15 @@ void comm_openport(frame *f, object *obj, unsigned char protocol,
 #endif
 
 /*
+ * NAME:	comm->clear()
+ * DESCRIPTION:	clean up connections
+ */
+void comm_clear()
+{
+    conn_clear();
+}
+
+/*
  * NAME:	comm->finish()
  * DESCRIPTION:	terminate connections
  */
@@ -299,21 +286,14 @@ static void addtoflush(user *usr, array *arr)
 }
 
 /*
- * NAME:	comm->new()
- * DESCRIPTION:	accept a new connection
+ * NAME:	comm->setup()
+ * DESCRIPTION:	setup a user
  */
-static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
+static array *comm_setup(user *usr, frame *f, object *obj)
 {
-    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
-			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
-    user *usr;
     dataspace *data;
     array *arr;
     value val;
-
-    if (obj->flags & O_SPECIAL) {
-	error("User object is already special purpose");
-    }
 
     if (obj->flags & O_DRIVER) {
 	error("Cannot use driver object as user object");
@@ -323,6 +303,44 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
     if (!O_HASDATA(obj) &&
 	i_call(f, obj, (array *) NULL, (char *) NULL, 0, TRUE, 0)) {
 	i_del_value(f->sp++);
+    }
+
+    d_wipe_extravar(data = o_dataspace(obj));
+    arr = arr_new(data, 3L);
+    arr->elts[0] = zero_int;
+    arr->elts[1] = arr->elts[2] = nil_value;
+    PUT_ARRVAL_NOREF(&val, arr);
+    d_set_extravar(data, &val);
+
+    usr->oindex = obj->index;
+    obj->flags |= O_USER;
+    obj->etabi = usr - users;
+    usr->conn = NULL;
+    usr->outbuf = (string *) NULL;
+    usr->osdone = 0;
+    usr->flags = 0;
+
+    return arr;
+}
+
+/*
+ * NAME:	comm->new()
+ * DESCRIPTION:	accept a new connection
+ */
+static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
+{
+    static char init[] = { (char) IAC, (char) WONT, (char) TELOPT_ECHO,
+			   (char) IAC, (char) DO,   (char) TELOPT_LINEMODE };
+    user *usr;
+    array *arr;
+    value val;
+
+    if (obj->flags & O_SPECIAL) {
+	error("User object is already special purpose");
+    }
+
+    if (obj->flags & O_DRIVER) {
+	error("Cannot use driver object as user object");
     }
 
     usr = freeuser;
@@ -338,19 +356,8 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 	lastuser = usr;
     }
 
-    d_wipe_extravar(data = o_dataspace(obj));
-    arr = arr_new(data, 3L);
-    arr->elts[0] = zero_int;
-    arr->elts[1] = arr->elts[2] = nil_value;
-    PUT_ARRVAL_NOREF(&val, arr);
-    d_set_extravar(data, &val);
-
-    usr->oindex = obj->index;
-    obj->flags |= O_USER;
-    obj->etabi = usr - users;
+    arr = comm_setup(usr, f, obj);
     usr->conn = conn;
-    usr->outbuf = (string *) NULL;
-    usr->osdone = 0;
     if (telnet) {
 	/* initialize connection */
 	usr->flags = CF_TELNET | CF_ECHO | CF_OUTPUT;
@@ -364,36 +371,60 @@ static user *comm_new(frame *f, object *obj, connection *conn, bool telnet)
 
 	arr->elts[0].u.number = CF_ECHO;
 	PUT_STRVAL_NOREF(&val, str_new(init, (long) sizeof(init)));
-	d_assign_elt(data, arr, &arr->elts[1], &val);
-    } else {
-	usr->flags = 0;
+	d_assign_elt(obj->data, arr, &arr->elts[1], &val);
     }
     nusers++;
 
     return usr;
 }
 
-#ifdef NETWORK_EXTENSIONS
+/*
+ * NAME:	comm->connect()
+ * DESCRIPTION:	attempt to establish an outbound connection
+ */
 void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
 	unsigned short port)
 {
-    connection *conn;
+    void *host;
+    int len;
     user *usr;
+    array *arr;
+    value val;
 
     if (nusers >= maxusers)
 	error("Max number of connection objects exceeded");
 
-    conn = (connection *) conn_connect(addr, port);
+    host = conn_host(addr, port, &len);
+    if (host == (void *) NULL) {
+	error("Unknown address");
+    }
 
-    if (conn == (connection *) NULL)
-	error("Can't connect to server");
+    for (usr = outbound; ; usr = usr->flush) {
+	if (usr == (user *) NULL) {
+	    usr = comm_new(f, obj, (connection *) NULL, (protocol == P_TELNET));
+	    arr = d_get_extravar(obj->data)->u.array;
+	    usr->flush = outbound;
+	    outbound = usr;
+	    break;
+	}
+	if ((OBJR(usr->oindex)->flags & O_SPECIAL) != O_USER) {
+	    /*
+	     * a previous outbound connection was undone, reuse it
+	     */
+	    arr_del(usr->extra);
+	    arr = comm_setup(usr, f, obj);
+	    break;
+	}
+    }
 
-    usr = comm_new(f,obj, conn, (protocol == P_TELNET));
-    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
-    opending++;
+    PUT_STRVAL_NOREF(&val, str_new(host, len));
+    d_assign_elt(obj->data, arr, &arr->elts[1], &val);
+    usr->flags |= CF_FLUSH;
+    arr_ref(usr->extra = arr);
     usr->flags |= CF_OPENDING;
 }
 
+#ifdef NETWORK_EXTENSIONS
 int comm_senddatagram(object *obj, string *str, string *ip, int port)
 {
     user *usr;
@@ -446,15 +477,6 @@ static void comm_del(frame *f, user *usr, object *obj, bool destruct)
 	}
 	obj->flags &= ~O_USER;
     }
-    /* make sure opending gets decreased if we were still waiting for
-     * connection esteblishment when receiving a close event.
-     */
-#ifdef NETWORK_EXTENSIONS
-    if (usr->flags & CF_OPENDING) {
-        opending--;
-        usr->flags &= ~CF_OPENDING;
-    }
-#endif
     olduser = this_user;
     if (ec_push((ec_ftn) NULL)) {
 	this_user = olduser;
@@ -511,7 +533,7 @@ void comm_challenge(object *obj, string *str)
  * NAME:	comm->write()
  * DESCRIPTION:	add bytes to output buffer
  */
-static int comm_write(user *usr, object *obj, string *str, char *text, 
+static int comm_write(user *usr, object *obj, string *str, char *text,
 	unsigned int len)
 {
     dataspace *data;
@@ -745,7 +767,7 @@ static void comm_udpflush(user *usr, object *obj, dataspace *data, array *arr)
     res = conn_udpsend(usr->conn, buf, strlen(buf), v[2].u.string->text,
 	(unsigned short) v[3].u.number);
     if (res == -1) {
-         /* EAGAIN occured, datagram could not be sent */
+	 /* EAGAIN occured, datagram could not be sent */
     }
     usr->flags &= ~CF_OUTPUT;
     usr->flags |= CF_ODONE;
@@ -795,7 +817,8 @@ static void comm_uflush(user *usr, object *obj, dataspace *data, array *arr)
 	if (usr->flags & CF_UDP) {
 	    conn_udpwrite(usr->conn, v[2].u.string->text, v[2].u.string->len);
 #ifndef NETWORK_EXTENSIONS
-	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len)) {
+	} else if (conn_udp(usr->conn, v[2].u.string->text, v[2].u.string->len))
+	{
 	    usr->flags |= CF_UDP;
 #endif
 	}
@@ -813,6 +836,29 @@ void comm_flush()
     object *obj;
     array *arr;
     value *v;
+
+    while (outbound != (user *) NULL) {
+	usr = outbound;
+	outbound = usr->flush;
+
+	arr = usr->extra;
+	obj = OBJ(usr->oindex);
+	if ((obj->flags & O_SPECIAL) == O_USER) {
+	    /* connect */
+	    usr->conn = conn_connect(arr->elts[1].u.string->text,
+				     arr->elts[1].u.string->len);
+	    if (usr->conn == (connection *) NULL) {
+		fatal("can't connect to server");
+	    }
+
+	    arr_del(arr);
+	    usr->flags &= ~CF_FLUSH;
+	} else {
+	    /* discard */
+	    usr->flush = flush;
+	    flush = usr;
+	}
+    }
 
     while (flush != (user *) NULL) {
 	usr = flush;
@@ -869,13 +915,15 @@ void comm_flush()
 	    } else
 #endif
 	    comm_uflush(usr, obj, obj->data, arr);
-        }
+	}
 	/*
 	 * disconnect
 	 */
 	if ((obj->flags & O_SPECIAL) != O_USER) {
 	    d_wipe_extravar(obj->data);
-	    conn_del(usr->conn);
+	    if (usr->conn != (connection *) NULL) {
+		conn_del(usr->conn);
+	    }
 #ifdef NETWORK_EXTENSIONS
 	    if ((usr->flags & (CF_TELNET | CF_PORT)) == CF_TELNET) {
 #else
@@ -1005,20 +1053,9 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 
     if (newlines != 0 || odone != 0) {
 	timeout = mtime = 0;
-#ifdef NETWORK_EXTENSIONS
-    } else if (opending != 0) {
-	timeout = 0;
-	if (mtime > 250) {
-	    mtime = 250;
-	}
-#endif
     }
     n = conn_select(timeout, mtime);
-#ifdef NETWORK_EXTENSIONS
-    if ((n <= 0) && (newlines == 0) && (odone == 0) && (opending == 0)) {
-#else
-    if (n <= 0 && newlines == 0 && odone == 0) {
-#endif
+    if ((n <= 0) && (newlines == 0) && (odone == 0)) {
 	/*
 	 * call_out to do, or timeout
 	 */
@@ -1089,27 +1126,31 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	obj = OBJ(usr->oindex);
 
 
-#ifdef NETWORK_EXTENSIONS
 	/*
 	 * Check if we have an event pending from connect() and if so, handle it.
 	 */
 	if (usr->flags & CF_OPENDING) {
 	    int retval;
 	    uindex old_user;
-	    retval = conn_check_connected(usr->conn);
+	    bool refused;
+	    retval = conn_check_connected(usr->conn, &refused);
 	    /*
 	     * Something happened to the connection..
 	     * its either connected or in error state now.
 	     */
 	    if (retval != 0) {
-		opending--;
 		usr->flags &= ~CF_OPENDING;
+		if (!(usr->flags & CF_FLUSH)) {
+		    addtoflush(usr, d_get_extravar(o_dataspace(obj))->u.array);
+		}
 		old_user = this_user;
 		this_user = obj->index;
 		/*
 		 * Error, report it to the user object.
 		 */
 		if (retval < 0) {
+		    obj->flags &= ~O_USER;
+#ifdef NETWORK_EXTENSIONS
 		    if (retval == -1) {
 			PUSH_STRVAL(f, str_new(strerror(errno), strlen(strerror(errno))));
 		    } else {
@@ -1119,6 +1160,12 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    if (i_call(f, obj, (array *) NULL, "receive_error", 13, TRUE, 1)) {
 			i_del_value(f->sp++);
 		    }
+#else
+		    PUSH_INTVAL(f, refused);
+		    if (i_call(f, obj, (array *) NULL, "unconnected", 11, TRUE, 1)) {
+			i_del_value(f->sp++);
+		    }
+#endif
 		    endthread();
 		/*
 		 * Connection completed, call open in the user object.
@@ -1137,7 +1184,6 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 	     */
 	    continue;
 	}
-#endif
 	if (usr->flags & CF_OUTPUT) {
 	    dataspace *data;
 
@@ -1158,15 +1204,12 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		    i_del_value(f->sp++);
 		    endthread();
 		}
-	    } else {
+	    } else
 #endif
-		if (i_call(f, obj, (array *) NULL, "message_done", 12, TRUE, 0)) {
-		    i_del_value(f->sp++);
-		    endthread();
-		}
-#ifdef NETWORK_EXTENSIONS
+	    if (i_call(f, obj, (array *) NULL, "message_done", 12, TRUE, 0)) {
+		i_del_value(f->sp++);
+		endthread();
 	    }
-#endif
 
 	    this_user = OBJ_NONE;
 	    if (obj->count == 0) {
@@ -1238,12 +1281,13 @@ void comm_receive(frame *f, Uint timeout, unsigned int mtime)
 		endthread();
 
 		newusr->flags |= CF_PROMPT;
-		addtoflush(newusr, 
+		addtoflush(newusr,
 			   d_get_extravar(o_dataspace(obj))->u.array);
 		olduser = this_user;
 		this_user = obj->index;
 		if (i_call(f, obj, (array *) NULL, "open", 4, TRUE, 0)) {
 		    i_del_value(f->sp++);
+		    endthread();
 		}
 		this_user=olduser;
 	    }
@@ -1587,40 +1631,24 @@ object *comm_user()
 	    obj : (object *) NULL;
 }
 
+# ifdef NETWORK_EXTENSIONS
 /*
- * NAME:	comm->users()
- * DESCRIPTION:	return an array with all user objects
+ * NAME:	comm->ports()
+ * DESCRIPTION:	return an array with all port objects
  */
-#ifdef NETWORK_EXTENSIONS
-array *comm_users(dataspace *data, bool ports)
-#else
-array *comm_users(dataspace *data)
-#endif
+array *comm_ports(dataspace *data)
 {
     array *a;
-#ifdef NETWORK_EXTENSIONS
-    int i, n, f;
-#else
     int i, n;
-#endif
     user *usr;
     value *v;
     object *obj;
 
     n = 0;
-#ifdef NETWORK_EXTENSIONS
-    for (i = (nusers + nports), usr = users; i > 0; usr++) {
-#else
-    for (i = nusers, usr = users; i > 0; usr++) {
-#endif
-	if (usr->oindex != OBJ_NONE) {
+    for (i = nports, usr = users; i > 0; usr++) {
+	if (usr->oindex != OBJ_NONE && (usr->flags & CF_PORT)) {
 	    --i;
-#ifdef NETWORK_EXTENSIONS
-	    if (OBJR(usr->oindex)->count != 0
-		&& (!((f = usr->flags & CF_PORT) || ports) || f && ports)) {
-#else
 	    if (OBJR(usr->oindex)->count != 0) {
-#endif
 		n++;
 	    }
 	}
@@ -1629,12 +1657,8 @@ array *comm_users(dataspace *data)
     a = arr_new(data, (long) n);
     v = a->elts;
     for (usr = users; n > 0; usr++) {
-#ifdef NETWORK_EXTENSIONS
-	if (usr->oindex != OBJ_NONE && (obj = OBJR(usr->oindex))->count != 0
-	    && (!((f = usr->flags & CF_PORT) || ports) || f && ports)) {
-#else
-	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
-#endif
+	if (usr->oindex != OBJ_NONE && (usr->flags & CF_PORT) &&
+	    (obj=OBJR(usr->oindex))->count != 0) {
 	    PUT_OBJVAL(v, obj);
 	    v++;
 	    --n;
@@ -1642,10 +1666,58 @@ array *comm_users(dataspace *data)
     }
     return a;
 }
+# endif
 
-#ifdef NETWORK_EXTENSIONS
 /*
- * NAME:        comm->is_connection()
+ * NAME:	comm->users()
+ * DESCRIPTION:	return an array with all user objects
+ */
+array *comm_users(dataspace *data)
+{
+    array *a;
+    int i, n;
+    user *usr;
+    value *v;
+    object *obj;
+
+    n = 0;
+    for (i = nusers, usr = users; i > 0; usr++) {
+	if (usr->oindex != OBJ_NONE) {
+#ifdef NETWORK_EXTENSIONS
+	    if (usr->flags & CF_PORT) {
+		continue;
+	    }
+#endif
+	    if (!(usr->flags & CF_OPENDING)) {
+		--i;
+		if (OBJR(usr->oindex)->count != 0) {
+		    n++;
+		}
+	    }
+	}
+    }
+
+    a = arr_new(data, (long) n);
+    v = a->elts;
+    for (usr = users; n > 0; usr++) {
+	if (usr->oindex != OBJ_NONE && (obj=OBJR(usr->oindex))->count != 0) {
+#ifdef NETWORK_EXTENSIONS
+	    if (usr->flags & CF_PORT) {
+		continue;
+	    }
+#endif
+	    if (!(usr->flags & CF_OPENDING)) {
+		PUT_OBJVAL(v, obj);
+		v++;
+		--n;
+	    }
+	}
+    }
+    return a;
+}
+
+/*
+ * NAME:	comm->is_connection()
  * DESCRIPTION: is this REALLY a user object?
  */
 bool comm_is_connection(object *obj)
@@ -1654,11 +1726,277 @@ bool comm_is_connection(object *obj)
 
     if ((obj->flags & O_SPECIAL) == O_USER) {
 	usr = &users[EINDEX(obj->etabi)];
-	if ((usr->flags & CF_PORT) != CF_PORT) {
-	    return 1;
+# ifdef NETWORK_EXTENSIONS
+	if (usr->flags & CF_PORT) {
+	    return FALSE;
+	}
+# endif
+	if (!(usr->flags & CF_OPENDING)) {
+	    return TRUE;
 	}
     }
-    return 0;
+    return FALSE;
 }
-#endif
 
+typedef struct {
+    short version;		/* hotboot version */
+    Uint nusers;		/* # users */
+    Uint tbufsz;		/* total telnet buffer size */
+    Uint ubufsz;		/* total UDP buffer size */
+} dump_header;
+
+static char dh_layout[] = "siii";
+
+typedef struct {
+    uindex oindex;		/* object index */
+    short flags;		/* user flags */
+    char state;			/* user state */
+    char cflags;		/* connection flags */
+    short newlines;		/* # newlines in input buffer */
+    Uint tbufsz;		/* telnet buffer size */
+    Uint osdone;		/* amount of output string done */
+    Int fd;			/* file descriptor */
+    Uint npkts;			/* # packets in UDP buffer */
+    Uint ubufsz;		/* UDB buffer size */
+    unsigned short port;	/* connection port */
+    short at;			/* connected at */
+} duser;
+
+static char du_layout[] = "usccsiiiiiss";
+
+/*
+ * NAME:	comm->dump()
+ * DESCRIPTION:	save users
+ */
+bool comm_dump(int fd)
+{
+    dump_header dh;
+    duser *du;
+    char **bufs, *tbuf, *ubuf;
+    user *usr;
+    int i;
+
+    du = (duser *) NULL;
+    bufs = (char **) NULL;
+    tbuf = ubuf = (char *) NULL;
+
+    /* header */
+    dh.version = 0;
+    dh.nusers = nusers;
+    dh.tbufsz = 0;
+    dh.ubufsz = 0;
+
+    /*
+     * gather information about users
+     */
+    if (nusers != 0) {
+	du = ALLOC(duser, nusers);
+	bufs = ALLOC(char*, 2 * nusers);
+
+	for (i = nusers, usr = users; i > 0; usr++) {
+	    if (usr->oindex != OBJ_NONE) {
+		int npkts, ubufsz;
+
+		du->oindex = usr->oindex;
+		du->flags = usr->flags;
+		du->state = usr->state;
+		du->newlines = usr->newlines;
+		du->tbufsz = usr->inbufsz;
+		du->osdone = usr->osdone;
+		*bufs++ = usr->inbuf;
+		if (!conn_export(usr->conn, &du->fd, &du->port, &du->at,
+				 &npkts, &ubufsz, bufs++, &du->cflags)) {
+		    /* no hotbooting support */
+		    FREE(du);
+		    FREE(bufs - 2);
+		    return FALSE;
+		}
+		du->npkts = npkts;
+		du->ubufsz = ubufsz;
+		dh.tbufsz += du->tbufsz;
+		dh.ubufsz += du->ubufsz;
+
+		du++;
+		--i;
+	    }
+	}
+	du -= nusers;
+	bufs -= 2 * nusers;
+    }
+
+    /* write header */
+    if (P_write(fd, (char *) &dh, sizeof(dump_header)) != sizeof(dump_header)) {
+	fatal("failed to dump user header");
+    }
+
+    if (nusers != 0) {
+	/*
+	 * write users
+	 */
+	if (P_write(fd, (char *) du, nusers * sizeof(duser)) !=
+						    nusers * sizeof(duser)) {
+	    fatal("failed to dump users");
+	}
+
+	if (dh.tbufsz != 0) {
+	    tbuf = ALLOC(char, dh.tbufsz);
+	}
+	if (dh.ubufsz != 0) {
+	    ubuf = ALLOC(char, dh.ubufsz);
+	}
+
+	/*
+	 * copy buffer content
+	 */
+	for (i = nusers; i > 0; --i, du++) {
+	    if (du->tbufsz != 0) {
+		memcpy(tbuf, *bufs, du->tbufsz);
+		tbuf += du->tbufsz;
+	    }
+	    bufs++;
+	    if (du->ubufsz != 0) {
+		memcpy(ubuf, *bufs, du->ubufsz);
+		ubuf += du->ubufsz;
+	    }
+	    bufs++;
+	}
+	tbuf -= dh.tbufsz;
+	ubuf -= dh.ubufsz;
+
+	/*
+	 * write buffer content
+	 */
+	if (dh.tbufsz != 0) {
+	    if (P_write(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
+		fatal("failed to dump telnet buffers");
+	    }
+	    FREE(tbuf);
+	}
+	if (dh.ubufsz != 0) {
+	    if (P_write(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
+		fatal("failed to dump UDP buffers");
+	    }
+	    FREE(ubuf);
+	}
+
+	FREE(du - nusers);
+	FREE(bufs - 2 * nusers);
+    }
+
+    return TRUE;
+}
+
+/*
+ * NAME:	comm->restore()
+ * DESCRIPTION:	restore users
+ */
+bool comm_restore(int fd)
+{
+    dump_header dh;
+    duser *du;
+    char *tbuf, *ubuf;
+    int i;
+    user *usr;
+    connection *conn;
+
+    tbuf = ubuf = (char *) NULL;
+
+    /* read header */
+    conf_dread(fd, (char *) &dh, dh_layout, 1);
+    if (dh.nusers > maxusers) {
+	fatal("too many users");
+    }
+
+    if (dh.nusers != 0) {
+	/* read users and buffers */
+	du = ALLOC(duser, dh.nusers);
+	conf_dread(fd, (char *) du, du_layout, dh.nusers);
+	if (dh.tbufsz != 0) {
+	    tbuf = ALLOC(char, dh.tbufsz);
+	    if (P_read(fd, tbuf, dh.tbufsz) != dh.tbufsz) {
+		fatal("cannot read telnet buffer");
+	    }
+	}
+	if (dh.ubufsz != 0) {
+	    ubuf = ALLOC(char, dh.ubufsz);
+	    if (P_read(fd, ubuf, dh.ubufsz) != dh.ubufsz) {
+		fatal("cannot read UDP buffer");
+	    }
+	}
+
+	for (i = dh.nusers; i > 0; --i) {
+	    /* import connection */
+	    conn = conn_import(du->fd, du->port, du->at, du->npkts, du->ubufsz,
+			       ubuf, du->cflags, (du->flags & CF_TELNET) != 0);
+	    if (conn == (connection *) NULL) {
+		if (nusers == 0) {
+		    if (dh.ubufsz != 0) {
+			FREE(ubuf);
+		    }
+		    if (dh.tbufsz != 0) {
+			FREE(tbuf);
+		    }
+		    FREE(du);
+		    return FALSE;
+		}
+		fatal("cannot restore user");
+	    }
+	    ubuf += du->ubufsz;
+
+	    /* allocate user */
+	    usr = freeuser;
+	    freeuser = usr->next;
+	    if (lastuser != (user *) NULL) {
+		usr->prev = lastuser->prev;
+		usr->prev->next = usr;
+		usr->next = lastuser;
+		lastuser->prev = usr;
+	    } else {
+		usr->prev = usr;
+		usr->next = usr;
+		lastuser = usr;
+	    }
+	    nusers++;
+
+	    /* initialize user */
+	    usr->oindex = du->oindex;
+	    OBJ(usr->oindex)->etabi = usr - users;
+	    OBJ(usr->oindex)->flags |= O_USER;
+	    usr->flags = du->flags;
+	    if (usr->flags & CF_ODONE) {
+		odone++;
+	    }
+	    usr->state = du->state;
+	    usr->newlines = du->newlines;
+	    newlines += usr->newlines;
+	    usr->conn = conn;
+	    if (usr->flags & CF_TELNET) {
+		m_static();
+		usr->inbuf = ALLOC(char, INBUF_SIZE + 1);
+		*usr->inbuf++ = LF;	/* sentinel */
+		m_dynamic();
+	    } else {
+		usr->inbuf = (char *) NULL;
+	    }
+	    usr->extra = (array *) NULL;
+	    usr->outbuf = (string *) NULL;
+	    usr->inbufsz = du->tbufsz;
+	    if (usr->inbufsz != 0) {
+		memcpy(usr->inbuf, tbuf, usr->inbufsz);
+		tbuf += usr->inbufsz;
+	    }
+	    usr->osdone = du->osdone;
+
+	    du++;
+	}
+	if (dh.ubufsz != 0) {
+	    FREE(ubuf - dh.ubufsz);
+	}
+	if (dh.tbufsz != 0) {
+	    FREE(tbuf - dh.tbufsz);
+	}
+	FREE(du - dh.nusers);
+    }
+
+    return TRUE;
+}

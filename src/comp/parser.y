@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -79,9 +79,9 @@ static node *comma	(node*, node*);
 /*
  * Keywords. The order is determined in tokenz() in the lexical scanner.
  */
-%token STRING NOMASK NIL BREAK ELSE CASE WHILE DEFAULT STATIC CONTINUE INT
-       RLIMITS FLOAT FOR INHERIT VOID IF CATCH SWITCH VARARGS MAPPING PRIVATE
-       DO RETURN ATOMIC MIXED OBJECT
+%token NIL BREAK DO MAPPING ELSE CASE OBJECT DEFAULT STATIC CONTINUE INT
+       FLOAT RLIMITS FOR INHERIT IF GOTO RETURN MIXED STRING WHILE FUNCTION
+       CATCH SWITCH VOID PRIVATE ATOMIC NOMASK VARARGS
 
 /*
  * composite tokens
@@ -201,7 +201,7 @@ data_declaration
 
 function_declaration
 	: class_specifier_list type_specifier function_dcltr
-		{ 
+		{
 		  typechecking = TRUE;
 		  c_function($1, $2, $3);
 		}
@@ -319,6 +319,12 @@ type_specifier
 		{ $$ = node_type(T_CLASS, c_objecttype($2)); }
 	| MAPPING
 		{ $$ = node_type(T_MAPPING, (string *) NULL); }
+	| FUNCTION
+		{
+		  $$ = node_str(str_new("/" BIPREFIX "function",
+					BIPREFIXLEN + 9));
+		  $$ = node_type(T_CLASS, c_objecttype($$));
+		}
 	| MIXED	{ $$ = node_type(T_MIXED, (string *) NULL); }
 	| VOID	{ $$ = node_type(T_VOID, (string *) NULL); }
 	;
@@ -434,7 +440,7 @@ stmt
 	| RLIMITS '(' f_list_exp ';' f_list_exp ')'
 		{
 		  if (typechecking) {
-		      char tnbuf[17];
+		      char tnbuf[TNBUFSIZE];
 
 		      if ($3->mod != T_INT && $3->mod != T_MIXED) {
 			  c_error("bad type for stack rlimit (%s)",
@@ -576,6 +582,12 @@ primary_p1_exp
 		{ $$ = $2; }
 	| function_name '(' opt_arg_list ')'
 		{ $$ = c_checkcall(c_funcall($1, $3), typechecking); }
+	| '&' ident '(' opt_arg_list ')'
+		{ $$ = c_address($2, $4, typechecking); }
+	| '&' '(' '*' cast_exp ')' '(' opt_arg_list ')'
+		{ $$ = c_extend($4, $7, typechecking); }
+	| '(' '*' cast_exp ')' '(' opt_arg_list ')'
+		{ $$ = c_call($3, $6, typechecking); }
 	| CATCH '('
 		{ c_startcond(); }
 	  list_exp ')'
@@ -630,7 +642,7 @@ prefix_exp
 		  $$ = $2;
 		  t_void($$);
 		  if (typechecking && $$->mod != T_INT && $$->mod != T_MIXED) {
-		      char tnbuf[17];
+		      char tnbuf[TNBUFSIZE];
 
 		      c_error("bad argument type for ~ (%s)",
 			      i_typename(tnbuf, $$->mod));
@@ -862,7 +874,7 @@ static void t_void(node *n)
  */
 static bool t_unary(node *n, char *name)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
 
     t_void(n);
     if (typechecking && !T_ARITHMETIC(n->mod) && n->mod != T_MIXED) {
@@ -1026,7 +1038,7 @@ static node *cast(node *n, node *type)
  */
 static node *idx(node *n1, node *n2)
 {
-    char tnbuf[17];
+    char tnbuf[TNBUFSIZE];
     unsigned short type;
 
     if (n1->type == N_STR && n2->type == N_INT) {
@@ -1096,7 +1108,7 @@ static node *range(node *n1, node *n2, node *n3)
     }
 
     if (typechecking && n1->mod != T_MAPPING && n1->mod != T_MIXED) {
-	char tnbuf[17];
+	char tnbuf[TNBUFSIZE];
 
 	/* indices */
 	if (n2 != (node *) NULL && n2->mod != T_INT && n2->mod != T_MIXED) {
@@ -1120,7 +1132,7 @@ static node *range(node *n1, node *n2, node *n3)
  */
 static node *bini(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     t_void(n1);
     t_void(n2);
@@ -1144,7 +1156,7 @@ static node *bini(int op, node *n1, node *n2, char *name)
  */
 static node *bina(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     unsigned short type;
 
     t_void(n1);
@@ -1164,10 +1176,10 @@ static node *bina(int op, node *n1, node *n2, char *name)
 	type = T_INT;
     } else if (n1->mod == T_FLOAT || n2->mod == T_FLOAT) {
 	type = T_FLOAT;
-        switch(op) {
-	    case N_ADD: 
-	    case N_ADD_EQ: 
-	    case N_ADD_EQ_1: 
+	switch(op) {
+	    case N_ADD:
+	    case N_ADD_EQ:
+	    case N_ADD_EQ_1:
 	    case N_DIV:
 	    case N_DIV_EQ:
 	    case N_EQ:
@@ -1281,7 +1293,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
 	    d = -d;
 	}
 	if (i < 0) {
-            n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
+	    n1->l.number = - (Int) (((Uint) -i) % ((Uint) d));
 	} else {
 	    n1->l.number = ((Uint) i) % ((Uint) d);
 	}
@@ -1298,7 +1310,7 @@ static node *mod(int op, node *n1, node *n2, char *name)
  */
 static node *add(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     unsigned short type;
 
@@ -1363,7 +1375,7 @@ static node *add(int op, node *n1, node *n2, char *name)
  */
 static node *sub(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     unsigned short type;
 
@@ -1475,7 +1487,7 @@ static node *rshift(int op, node *n1, node *n2, char *name)
  */
 static node *rel(int op, node *n1, node *n2, char *name)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
 
     t_void(n1);
     t_void(n2);
@@ -1558,7 +1570,7 @@ static node *rel(int op, node *n1, node *n2, char *name)
  */
 static node *eq(node *n1, node *n2)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     xfloat f1, f2;
     int op;
 
@@ -1806,7 +1818,7 @@ static node *quest(node *n1, node *n2, node *n3)
  */
 static node *assign(node *n1, node *n2)
 {
-    char tnbuf1[17], tnbuf2[17];
+    char tnbuf1[TNBUFSIZE], tnbuf2[TNBUFSIZE];
     node *n, *m;
     unsigned short type;
 

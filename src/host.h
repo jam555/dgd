@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -256,6 +256,7 @@ extern void  P_message	(char*);
 # define P_mkdir	mkdir
 # define P_rmdir	rmdir
 # define P_chdir	chdir
+# define P_execv	execv
 # else
 	/* filename translation */
 typedef long off_t;
@@ -274,6 +275,7 @@ extern int P_rename	(char*, char*);
 extern int P_mkdir	(char*, int);
 extern int P_rmdir	(char*);
 extern int P_chdir	(char*);
+extern int P_execv	(char*, char**);
 # endif
 # endif /* INCLUDE_FILE_IO */
 

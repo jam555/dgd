@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+# define INCLUDE_FILE_IO
 # include "dgd.h"
 # include "str.h"
 # include "array.h"
@@ -88,7 +89,7 @@ void endthread()
     co_swapcount(d_swapout(fragment));
 
     if (stop) {
-	comm_finish();
+	comm_clear();
 	ed_finish();
 # ifdef DEBUG
 	swap = 1;
@@ -107,18 +108,33 @@ void endthread()
 
     if (dump) {
 	/*
-	 * create a state dump
+	 * create a snapshot
 	 */
-	conf_dump();
+	conf_dump(incr, boot);
 	dump = FALSE;
-	rebuild = TRUE;
-	dindex = UINDEX_MAX;
+	if (!incr) {
+	    rebuild = TRUE;
+	    dindex = UINDEX_MAX;
+	}
     }
 
     if (stop) {
 	sw_finish();
+
+	if (boot) {
+	    char **hotboot;
+
+	    /*
+	     * attempt to hotboot
+	     */
+	    hotboot = conf_hotboot();
+	    P_execv(hotboot[0], hotboot);
+	    message("Hotboot failed\012");	/* LF */
+	}
+
+	comm_finish();
 	m_finish();
-	exit(0);
+	exit(boot);
     }
 }
 
@@ -158,8 +174,8 @@ int dgd_main(int argc, char **argv)
 	--argc;
 	argv++;
     }
-    if (argc < 1 || argc > 2) {
-	message("Usage: %s [-e module] config_file [dump_file]\012",    /* LF */
+    if (argc < 1 || argc > 3) {
+	message("Usage: %s [-e module] config_file [[partial_snapshot] snapshot]\012",     /* LF */
 		program);
 	return 2;
     }
@@ -169,7 +185,8 @@ int dgd_main(int argc, char **argv)
     swap = dump = intr = stop = FALSE;
     rebuild = TRUE;
     rtime = 0;
-    if (!conf_init(argv[0], (argc == 2) ? argv[1] : (char *) NULL, module,
+    if (!conf_init(argv[0], (argc > 1) ? argv[1] : (char *) NULL,
+		   (argc > 2) ? argv[2] : (char *) NULL, module,
 		   &fragment)) {
 	return 2;	/* initialization failed */
     }

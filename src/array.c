@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -47,7 +47,7 @@ typedef struct _arrhchunk_ {
 # define MELT_CHUNK	128
 
 typedef struct _mapelt_ {
-    unsigned short hashval;	/* hash value of index */
+    Uint hashval;		/* hash value of index */
     bool add;			/* new element? */
     value idx;			/* index */
     value val;			/* value */
@@ -62,7 +62,7 @@ typedef struct _meltchunk_ {
 typedef struct _maphash_ {
     unsigned short size;	/* # elements in hash table */
     unsigned short sizemod;	/* mapping size modification */
-    unsigned short tablesize;	/* actual hash table size */
+    Uint tablesize;		/* actual hash table size */
     mapelt *table[1];		/* hash table */
 } maphash;
 
@@ -417,7 +417,7 @@ void arr_clear()
  * NAME:	backup()
  * DESCRIPTION:	add an array backup to the backup chunk
  */
-static void backup(abchunk **ac, array *a, value *elts, unsigned int size, 
+static void backup(abchunk **ac, array *a, value *elts, unsigned int size,
 	dataplane *plane)
 {
     abchunk *c;
@@ -1755,11 +1755,11 @@ array *map_intersect(dataspace *data, array *m1, array *a2)
  * NAME:	mapping->grow()
  * DESCRIPTION:	add an element to a mapping
  */
-static mapelt *map_grow(dataspace *data, array *m, unsigned short hashval, bool add)
+static mapelt *map_grow(dataspace *data, array *m, Uint hashval, bool add)
 {
     maphash *h;
     mapelt *e;
-    unsigned short i;
+    Uint i;
 
     h = m->hashed;
     if (add &&
@@ -1844,9 +1844,10 @@ static mapelt *map_grow(dataspace *data, array *m, unsigned short hashval, bool 
  * DESCRIPTION:	Index a mapping with a value. If a third argument is supplied,
  *		perform an assignment; otherwise return the indexed value.
  */
-value *map_index(dataspace *data, array *m, value *val, value *elt)
+value *map_index(dataspace *data, array *m, value *val, value *elt,
+		 value *verify)
 {
-    unsigned short i;
+    Uint i;
     mapelt *e, **p;
     bool del, add, hash;
 
@@ -1902,7 +1903,10 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 		 * found in the hashtable
 		 */
 		hash = TRUE;
-		if (elt != (value *) NULL) {
+		if (elt != (value *) NULL &&
+		    (verify == (value *) NULL ||
+		     (e->val.type == T_STRING &&
+		      e->val.u.string == verify->u.string))) {
 		    /*
 		     * change element
 		     */
@@ -1957,7 +1961,10 @@ value *map_index(dataspace *data, array *m, value *val, value *elt)
 	     * found in the array
 	     */
 	    v = &m->elts[n];
-	    if (elt != (value *) NULL) {
+	    if (elt != (value *) NULL &&
+		(verify == (value *) NULL ||
+		 (v[1].type == T_STRING && v[1].u.string == verify->u.string)))
+	    {
 		/*
 		 * change the element
 		 */

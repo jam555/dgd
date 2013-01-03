@@ -1,7 +1,390 @@
-This file lists all changes to the DGD open source release.
+This file lists all changes to the DGD open source release from 2010-02-03 to
+2012-09-16.
 
 All changes prior to this release on 2010-02-03 can be found
 in doc/Changelog.Dworkin
+
+
+2012-09-16
+
+  Felix Croes (felix@dworkin.nl)
+
+  Switch the main repository to Github.
+  Since Github has excellent web display tools, a separate Changelog is no
+  longer maintained.
+
+2012-09-09/2012-09-13
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Introduce a new instruction to handle all cases of kfun(array...).
+  - Correct the floating point maxlog constant.
+  - Silence warnings in VS2012.
+
+2012-09-04
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Let connect work with hostnames and IPv6.
+  - Use waitfds to see when the connection becomes ready.
+  - Don't poll for outbound connection status.
+  - Don't list pending outbound connections in users(), and don't let
+    query_ip_number() and query_ip_name() return a host address/name for them.
+  - Enable connect() in atomic code, if NETWORK_EXTENSIONS is not defined.
+
+2012-09-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Whitespace cleanup.
+  - Clean up comm code.
+
+2012-08-31
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Allow DGD to restore hotboot snapshots from Hydra, treating them as plain
+    snapshots.
+  - Release 1.4.15.
+
+2012-08-30
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Also trim the object table after a snapshot
+  if we aren't about to shut down.
+
+2012-08-30
+
+  Ulrich Strauss (miraculix@xyllomer.de)
+
+  Re-Enable open of any free port number. Needed for passive ftp
+
+2012-08-16
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Fix some more buggy NETWORK_EXTENSIONS code.
+  - And even more.
+
+2012-08-13
+
+  Felix Croes (felix@dworkin.nl)
+
+  Generate proper code for catch(foo, bar, "gnu");
+
+2012-08-12
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add a missing call to endthread() in NETWORK_EXTENSIONS code, which really
+  isn't stable yet.
+
+2012-08-08
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Remove obsolete declaration of d_swapsync().
+
+2012-07-27
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Silence compiler warning for interpret.c.
+  - Add optional config parameter "modules", an array.
+
+2012-07-16
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Call it "active" instead of "passive" so it is easier to understand.
+
+2012-07-16
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Allow separate passive specifications for an object dataspace and control.
+
+2012-07-16
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Fix the fix.
+  - Use a macro for typename buffer size.
+
+2012-07-15
+
+  Raymond Jennings
+
+  Fix erroneous assumption made during a passive restore.
+
+2012-07-15
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Hotbooting is always disabled for DGD.
+  - Fix performing a substitution inside an editor global command.
+  - Somehow, the maximum number of users got set to 192?
+  - Make the "passive" hack less aggressive.
+
+2012-06-29
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Use passive dataspace and control block allocation during swap rebuild
+  to prevent object cache pollution.
+
+2012-06-28
+
+  Felix Croes (felix@dworkin.nl)
+
+  Include lpc-doc as a submodule, remove duplicate files.
+
+2012-04-26
+
+  Raymond Jennings (shentino@gmail.com)
+
+  - Trim the sector map after creating a snapshot.
+  - Minor cleanup to object table trimming.
+
+2012-04-25
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Create a proper CustomBuild step for parser.y on Windows.
+  - Fix up Changelog.
+  - 1.4.14
+
+2012-02-29/2012-04-09
+
+  Kent Mein (mein@cs.umn.edu)
+
+  Improving LPC.html.
+
+2012-04-04
+
+  Felix Croes (felix@dworkin.nl)
+
+  Remove reference to BeeHive Internet Technologies from LPC.html.
+
+2012-04-03
+
+  Felix Croes (felix@dworkin.nl)
+
+  Reset address femily each time WSAStringToAddress erases it.
+
+2012-03-18
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Only clear O_USER in a connect()'ing object if there was an error.
+
+2012-03-14
+
+  Raymond Jennings (shentino@gmail.com)
+
+  More verbose reporting of swap file or swap sector size problems.
+
+2012-03-06
+
+  Felix Croes (felix@dworkin.nl)
+
+  Bugfix in previous commit: string freed twice.
+
+2012-03-05
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix a corner case for indexed string assignment.
+
+2012-01-29
+
+  Neil McBride (neil@mcbridefamily.org)
+
+  Add the missing empty directories I'm used to seeing in DGD.
+
+2012-01-26
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Fix code generation for I_SPREAD.
+  - 1.4.13
+
+2012-01-23
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Formatting fixes
+
+2011-12-05
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add a connect(string address, int port) kfun.
+
+2011-11-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix typo in extension interface.
+
+2011-08-09/2011-11-01
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Correct some stack depth calculations for the new VM.
+  - Reenable unforgiving stack overflow checking in DEBUG mode.
+  - Fix various compilation warnings.
+  - Preserve traverse link when copying a parser node.
+  - Release 1.4.12.
+
+2011-08-07
+
+  Felix Croes (felix@dworkin.nl)
+
+  Implement a new virtual machine, with a changed instruction set.  The new
+  VM uses specialized store instructions instead of lvalues for assignment.
+  Old statedumps and precompiled code are supported through a backward
+  compatibility mode.
+
+2011-07-30
+
+  Felix Croes (felix@dworkin.nl)
+
+  Fix two compilation errors, and release 1.4.11.
+
+2011-07-28
+
+  Felix Croes (felix@dworkin.nl)
+
+  1.4.10
+
+2011-07-23
+
+  Raymond Jennings (shentino@gmail.com)
+
+  - Prevent excessive memory allocation
+  - Sanity check size of swap cache
+
+2011-07-20
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Fixups in networking code.
+
+  - Prevent a potential dangling pointer
+  - Plug a potential memory leak
+
+2011-07-20
+
+  Felix Croes (felix@dworkin.nl)
+
+  The code optimizer wasn't handling some floating point expressions properly.
+
+2011-07-18
+
+  Felix Croes (felix@dworkin.nl)
+
+  Remove relay program again, this will be part of the LPC extensions project
+  instead.
+
+2011-07-17
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add a small and simple relay program that can be used to connect the server
+  to an external program.
+
+2011-07-14
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Make sure that IPv6 sockets only bind to IPv6 addresses, to handle
+  case where the operating system defaults to binding both IPv4 and IPv6,
+  causing an EADDRINUSE in listen().
+
+2011-07-13
+
+  Raymond Jennings (shentino@gmail.com)
+
+  Code cleanups, typo fixes.
+
+2011-07-13
+
+  Felix Croes (felix@dworkin.nl)
+
+  Released 1.4.9.
+
+2011-06-20/2011-06-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  Implement minimal support for function pointers (compile with -DCLOSURES).
+  When enabled, 'function' is a reserved keyword, and the operators & and *
+  have an additional role:
+
+    function foo;
+
+    foo = &func();		/* pointer to func */
+    (*foo)(1, 2, 3);		/* call func(1, 2, 3) */
+    foo = &func(4);		/* pointer to func with one fixed argument */
+    foo = &(*foo)(5, 6);	/* add second and third fixed argument */
+    (*foo)();			/* call func(4, 5, 6) */
+
+2011-06-22
+
+  Felix Croes (felix@dworkin.nl)
+
+  - On startup, seed the random number generator with the time in milliseconds.
+  - Assume that modern compilers can handle symbols longer than 8 characters,
+    and let the precompiler generate a longer unique tag per generated output
+    file.
+
+2011-06-17
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Fixed a bug in optimizing floating point assignment operators.
+  - Generate proper code for floating point /=.
+
+2011-06-12
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Correctly calculate the size of a negative case label.
+  - Ensure that mapping hashtable size doesn't overflow.
+
+2011-06-10
+
+  Raymond Jennings (shentino@gmail.com)
+
+  - Whitespace fix in sample config file.
+  - Trim object table on restore.
+
+2011-05-19
+
+  Felix Croes (felix@dworkin.nl)
+
+  Released 1.4.8.
+
+2011-05-18
+
+  Felix Croes (felix@dworkin.nl)
+
+  Add an optional dummy argument to shutdown().
+
+2011-04-06/2011-05-13
+
+  Felix Croes (felix@dworkin.nl)
+
+  - Deal with explicit arrsize in dumpfile header.
+  - Add O_INHERITED and O_INSTANTIATED to status(obj).
+  - Get the precompiler to compile again.
+  - Generate proper code for the new builtin kfuns.
+  - Deal with explicit LPC int size in dumpfile header.
+  - Ensure that buffers for int=>str conversion are large enough.
+  - Include one more digit of precision when converting a float to string.
+  - Set FLT_DIG to 11, the correct value.
 
 2011-07-24/2011-08-04
 
@@ -73,9 +456,8 @@ in doc/Changelog.Dworkin
 
   Raymond Jennings (shentino@gmail.com)
 
-  - Added callout throttling.  Simply -DCO_THROTTLE in the
-    top Makefile with the number of callouts to execute in between
-    checks for I/O.
+  Added callout throttling.  Simply -DCO_THROTTLE in the top Makefile
+  with the number of callouts to execute in between checks for I/O.
 
 2010-10-13/2010-11-18
 
@@ -273,7 +655,7 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen
 
-  Remove conn_udp and conn_udpcheck when network extensions are 
+  Remove conn_udp and conn_udpcheck when network extensions are
   enabled.
 
   src/comm.h
@@ -287,7 +669,7 @@ in doc/Changelog.Dworkin
 
   Forbid using the driver object as user or port object
 
-  Merged changes from Felix: 
+  Merged changes from Felix:
   - Don't save the parse_string automatons in an object that has in the
     meanwhile been made special.
   - Fix some issues pointed out by valgrind.
@@ -338,9 +720,9 @@ in doc/Changelog.Dworkin
 
   Merged latest changes from Felix:
   - Add dummy errorhandler function for extension interface.
-  - Load dataspace of destructed objects from a safer place. 
+  - Load dataspace of destructed objects from a safer place.
     - but only when it actually exists
-  - Properly call add-on kfuns from precompiled code. 
+  - Properly call add-on kfuns from precompiled code.
 
   Properly protoized dgd_error()
 
@@ -415,7 +797,7 @@ in doc/Changelog.Dworkin
 
   Bart van Leeuwen (aidil@wotf.org)
 
-  Import latest changes from Felix: Let status() return 
+  Import latest changes from Felix: Let status() return
   large numbers as floats.
 
   src/alloc.h
@@ -426,7 +808,7 @@ in doc/Changelog.Dworkin
   Bart van Leeuwen (aidil@wotf.org)
 
   Assume long long works on all platforms, and change the Uuint
-  define accordingly. Change the swapfile size check to use 
+  define accordingly. Change the swapfile size check to use
   Uuint instead of long long.
   Small change and fix to swap file size sanity check.
 

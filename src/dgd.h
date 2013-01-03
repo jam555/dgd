@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -32,9 +32,13 @@ typedef struct _frame_ frame;
 # include "alloc.h"
 # include "error.h"
 
-# define BSET(map, bit)		(map[(bit) >> 3] |= (1 << ((bit) & 7)))
-# define BCLR(map, bit)		(map[(bit) >> 3] &= ~(1 << ((bit) & 7)))
-# define BTST(map, bit)		(map[(bit) >> 3] & (1 << ((bit) & 7)))
+# define BOFF(bit)		((bit) >> 5)
+# define BBIT(bit)		(1 << ((bit) & 31))
+# define BMAP(size)		BOFF((size) + 31)
+
+# define BSET(map, bit)		(map[BOFF(bit)] |= BBIT(bit))
+# define BCLR(map, bit)		(map[BOFF(bit)] &= ~BBIT(bit))
+# define BTST(map, bit)		(map[BOFF(bit)] & BBIT(bit))
 
 extern bool call_driver_object	(frame*, char*, int);
 extern void interrupt		(void);

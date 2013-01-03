@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -21,7 +21,7 @@ extern void	 c_init		(char*, char*, char*, char**, int);
 extern object	*c_compile	(frame*, char*, object*, string**, int, int);
 extern bool	 c_upgrade	(object**, unsigned int);
 extern int	 c_autodriver	(void);
-extern void 	 c_error	(char *, ...);
+extern void	 c_error	(char *, ...);
 
 extern bool	 c_typechecking	(void);
 extern bool	 c_inherit	(char*, node*, int);
@@ -64,6 +64,9 @@ extern node	*c_variable	(node*);
 extern short	 c_vtype	(int);
 extern node	*c_funcall	(node*, node*);
 extern node	*c_arrow	(node*, node*, node*);
+extern node	*c_address	(node*, node*, int);
+extern node	*c_extend	(node*, node*, int);
+extern node	*c_call		(node*, node*, int);
 extern node	*c_instanceof	(node*, node*);
 extern node	*c_checkcall	(node*, int);
 extern node	*c_tst		(node*);

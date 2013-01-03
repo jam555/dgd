@@ -4,7 +4,7 @@ DGD's build process is very simple, and doesn't have
 a configure script.
 
 DGD can be compiled on Unix alike systems and on Windows,
-see doc/Platforms for more information. Also see 
+see doc/Platforms for more information. Also see
 src/host/win32/README for additional information regarding
 the Windows build.
 
@@ -13,29 +13,26 @@ proper defines to the Makefile on Unix systems, or to your
 project on Visual Studio.
 
 
-NETWORK_EXTENSIONS            Enable extended network functionality
-                              (outgoing connections, opening ports
-                              from LPC code)
+SLASHSLASH		      C++ style // comments in LPC code.
 
-DUMP_FUNCS                    Enable dump_function and dump_object
-                              kfuns. Output from those kfuns goes to
-                              stderr, they can provide interesting
-                              information for those interested in DGD's
-                              virtual machine and bytecode interpreter
-                              as well as for debugging some problems.
+NETWORK_EXTENSIONS	      Enable extended network functionality
+			      (outgoing connections, opening ports
+			      from LPC code)
 
-DGD_EXTENSION                 Enable the DGD extension interface, see
-                              doc/Extensions for more information about
-                              the extension interface.
+CLOSURES		      Function pointers, implemented as a builtin
+			      type.  See doc/builtin for information
+			      about adding builtin types.
+			      CLOSURES allows taking the address of a
+			      function with &func(), and calling the
+			      function that a function pointer refers to
+			      with (*func)().  When creating a pointer to
+			      a function, function arguments may be
+			      included: &func("foo").  More function
+			      arguments can be added when the function is
+			      called, or in constructing a new pointer:
+			      &(*func)("bar")
 
-_FILE_OFFSET_BITS             Linux/Solaris only. Normally this is
-                              defined in host.h as _FILE_OFFSET_BITS=64
-                              You can override this from the Makefile
-                              if for some reason you need 32 bit file
-                              offsets. Note that this limits the size
-                              of the swap and dump files to 2GB.
-
-CO_THROTTLE                   Enables callout throttling.  Set it to the
-                              maximum number of callouts to run per I/O
-                              task.  This can be useful for preventing
-                              callout bombs from jamming your mud.
+CO_THROTTLE		      Enables callout throttling.  Set it to the
+			      maximum number of callouts to run per I/O
+			      task.  This can be useful for preventing
+			      callout bombs from jamming your mud.

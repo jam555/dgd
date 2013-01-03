@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -30,7 +30,6 @@
 # include "file.c"
 # include "math.c"
 # include "extra.c"
-# include "debug.c"
 # undef FUNCDEF
 
 /*
@@ -43,7 +42,6 @@ static kfunc kforig[] = {
 # include "file.c"
 # include "math.c"
 # include "extra.c"
-# include "debug.c"
 # undef FUNCDEF
 };
 
@@ -55,19 +53,20 @@ char kfind[256];	/* n -> index */
 static char kfx[256];	/* index -> n */
 int nkfun, ne, nd, nh;	/* # kfuns */
 
+extern void kf_enc(frame *, int, value *);
+extern void kf_enc_key(frame *, int, value *);
+extern void kf_dec(frame *, int, value *);
+extern void kf_dec_key(frame *, int, value *);
+extern void kf_xcrypt(frame *, int, value *);
+extern void kf_md5(frame *, int, value *);
+extern void kf_sha1(frame *, int, value *);
+
 /*
  * NAME:	kfun->clear()
  * DESCRIPTION:	clear previously added kfuns from the table
  */
 void kf_clear()
 {
-    extern void kf_enc(frame *, int, value *);
-    extern void kf_enc_key(frame *, int, value *);
-    extern void kf_dec(frame *, int, value *);
-    extern void kf_dec_key(frame *, int, value *);
-    extern void kf_xcrypt(frame *, int, value *);
-    extern void kf_md5(frame *, int, value *);
-    extern void kf_sha1(frame *, int, value *);
     static char proto[] = { T_VOID, 0 };
     static extkfunc builtin[] = {
 	{ "encrypt DES", proto, kf_enc },
@@ -134,8 +133,13 @@ static char *prototype(char *proto)
 		varargs = TRUE;
 	    } else {
 		if (*p != T_MIXED) {
-		    /* non-mixed arguments: typecheck this function */
-		    tclass |= C_TYPECHECKED;
+		    if (*p == T_LVALUE) {
+			/* lvalue arguments: turn off typechecking */
+			tclass &= ~C_TYPECHECKED;
+		    } else {
+			/* non-mixed arguments: typecheck this function */
+			tclass |= C_TYPECHECKED;
+		    }
 		}
 		if (varargs) {
 		    vargs++;
@@ -222,7 +226,7 @@ void kf_init()
 	*k1++ = i;
 	*k2++ = i;
     }
-    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS, 
+    qsort((void *) (kftab + KF_BUILTINS), nkfun - KF_BUILTINS,
 	  sizeof(kfunc), kf_cmp);
     qsort(kfenc, ne, sizeof(kfunc), kf_cmp);
     qsort(kfdec, nd, sizeof(kfunc), kf_cmp);
@@ -330,7 +334,7 @@ int kf_hash_string(frame *f, int nargs)
 
     n = kf_index(kfhsh, 0, nh, f->sp[nargs - 1].u.string->text);
     if (n < 0) {
-        error("Unknown hash algorithm");
+	error("Unknown hash algorithm");
     }
     val = nil_value;
     (kfhsh[n].ext)(f, nargs - 1, &val);
@@ -504,7 +508,7 @@ void kf_restore(int fd, int oldcomp)
     if (dh.nkfun < nkfun - KF_BUILTINS) {
 	/*
 	 * There are more kfuns in the current driver than in the driver
-	 * which created the dump file: deal with those new kfuns.
+	 * which created the snapshot: deal with those new kfuns.
 	 */
 	n = dh.nkfun + 128;
 	for (i = KF_BUILTINS; i < nkfun; i++) {

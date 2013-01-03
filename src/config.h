@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -90,13 +90,14 @@ typedef unsigned char eindex;
 # define BIPREFIX	"builtin/"
 # define BIPREFIXLEN	8
 
-extern bool		conf_init	(char*, char*, char*, sector*);
+extern bool		conf_init	(char*, char*, char*, char*, sector*);
 extern char	       *conf_base_dir	(void);
 extern char	       *conf_driver	(void);
+extern char	      **conf_hotboot	(void);
 extern int		conf_typechecking (void);
 extern unsigned short	conf_array_size	(void);
 
-extern void   conf_dump		(void);
+extern void   conf_dump		(bool, bool);
 extern Uint   conf_dsize	(char*);
 extern Uint   conf_dconv	(char*, char*, char*, Uint);
 extern void   conf_dread	(int, char*, char*, Uint);

@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -757,6 +757,7 @@ static Int ps_traverse(parser *ps, pnode *pn, pnode *next)
 		    if (n == 1) {
 			/* sole branch */
 			sub->next = pn->next;
+			sub->trav = pn->trav;
 			*pn = *sub;
 			return pn->len;
 		    } else {

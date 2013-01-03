@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -147,8 +147,8 @@ int ext_frame_pop_truthval(frame *f)
 void ext_frame_store(frame *f)
 {
     i_store(f);
-    f->sp[1] = f->sp[0];
-    f->sp++;
+    --f->sp;
+    f->sp[0] = f->sp[-1];
 }
 
 /*
@@ -158,7 +158,6 @@ void ext_frame_store(frame *f)
 Int ext_frame_store_int(frame *f)
 {
     i_store(f);
-    f->sp += 2;
     return f->sp[-2].u.number;
 }
 
@@ -456,7 +455,7 @@ static void ext_object_mark(object *obj)
  */
 static void ext_object_unmark(object *obj)
 {
-    obj->flags &= O_SPECIAL;
+    obj->flags &= ~O_SPECIAL;
 }
 
 /*
@@ -537,7 +536,7 @@ static array *ext_mapping_new(dataspace *data)
  */
 static value *ext_mapping_index(array *m, value *idx)
 {
-    return map_index(m->primary->data, m, idx, NULL);
+    return map_index(m->primary->data, m, idx, (value *) NULL, (value *) NULL);
 }
 
 /*
@@ -547,7 +546,7 @@ static value *ext_mapping_index(array *m, value *idx)
 static void ext_mapping_assign(dataspace *data, array *m, value *idx,
 			       value *val)
 {
-    map_index(data, m, idx, val);
+    map_index(data, m, idx, val, (value *) NULL);
 }
 
 /*
@@ -580,7 +579,7 @@ static void ext_runtime_error(frame *f, char *mesg)
 }
 
 /*
- * NAME:	ext->runtime_rlimits()   
+ * NAME:	ext->runtime_rlimits()
  * DESCRIPTION:	handle rlimits
  */
 void ext_runtime_rlimits(frame *f)

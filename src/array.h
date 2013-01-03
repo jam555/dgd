@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2011 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -66,7 +66,8 @@ extern unsigned short	map_size	(dataspace*, array*);
 extern array	       *map_add		(dataspace*, array*, array*);
 extern array	       *map_sub		(dataspace*, array*, array*);
 extern array	       *map_intersect	(dataspace*, array*, array*);
-extern value	       *map_index	(dataspace*, array*, value*, value*);
+extern value	       *map_index	(dataspace*, array*, value*, value*,
+					 value*);
 extern array	       *map_range	(dataspace*, array*, value*, value*);
 extern array	       *map_indices	(dataspace*, array*);
 extern array	       *map_values	(dataspace*, array*);

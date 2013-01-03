@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010-2011 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -47,12 +47,12 @@ typedef struct _dfuncdef_ {
 
 typedef struct {
     char class;			/* variable class */
+    char type;			/* variable type */
     char inherit;		/* variable name inherit index */
     unsigned short index;	/* variable name index */
-    unsigned short type;	/* variable type */
 } dvardef;
 
-# define DV_LAYOUT	"ccss"
+# define DV_LAYOUT	"cccs"
 
 typedef struct {
     char inherit;		/* function object index */
@@ -232,7 +232,7 @@ struct _dataspace_ {
 
 extern void		d_init		 (void);
 extern void		d_init_conv	 (int, int, int, int, int, int, int,
-					    int);
+					    int, int);
 
 extern control	       *d_new_control	 (void);
 extern dataspace       *d_new_dataspace  (object*);
@@ -255,9 +255,12 @@ extern value	       *d_get_elts	 (array*);
 extern void		d_get_callouts	 (dataspace*);
 
 extern sector		d_swapout	 (unsigned int);
-extern void		d_swapsync	 (void);
 extern void		d_upgrade_mem	 (object*, object*);
-extern void		d_restore_obj	 (object*, Uint*);
+extern control	       *d_restore_ctrl	 (object*,
+					  void(*)(char*, sector*, Uint, Uint));
+extern dataspace       *d_restore_data	 (object*, Uint*, uindex,
+					  void(*)(char*, sector*, Uint, Uint));
+extern void		d_restore_obj	 (object*, Uint*, uindex, bool, bool);
 extern void		d_converted	 (void);
 
 extern void		d_free_control	 (control*);
@@ -299,12 +302,13 @@ extern void		d_del_dataspace	(dataspace*);
 
 
 /* bit values for ctrl->flags */
-# define CTRL_PROGCMP		0x03	/* program compressed */
-# define CTRL_STRCMP		0x0c	/* strings compressed */
-# define CTRL_UNDEFINED		0x10	/* has undefined functions */
-# define CTRL_COMPILED		0x20	/* precompiled control block */
-# define CTRL_VARMAP		0x40	/* varmap updated */
-# define CTRL_CONVERTED		0x80	/* converted control block */
+# define CTRL_PROGCMP		0x003	/* program compressed */
+# define CTRL_STRCMP		0x00c	/* strings compressed */
+# define CTRL_UNDEFINED		0x010	/* has undefined functions */
+# define CTRL_COMPILED		0x020	/* precompiled control block */
+# define CTRL_VARMAP		0x040	/* varmap updated */
+# define CTRL_CONVERTED		0x080	/* converted control block */
+# define CTRL_OLDVM		0x100	/* uses old VM */
 
 /* bit values for dataspace->flags */
 # define DATA_STRCMP		0x03	/* strings compressed */

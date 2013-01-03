@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -171,11 +171,11 @@ static void dump_vardefs(control *ctrl)
     if (ctrl->nvardefs != 0) {
 	printf("\nstatic dvardef vardefs[] = {\n");
 	for (i = 0; i < ctrl->nvardefs; i++) {
-	    printf("{ %d, %d, %u, %u },\n",
+	    printf("{ %d, %d, %d, %u },\n",
 		   ctrl->vardefs[i].class,
+		   ctrl->vardefs[i].type,
 		   ctrl->vardefs[i].inherit,
-		   ctrl->vardefs[i].index,
-		   ctrl->vardefs[i].type);
+		   ctrl->vardefs[i].index);
 	}
 	printf("};\n");
 	if (ctrl->nclassvars != 0) {
@@ -241,7 +241,7 @@ static void dump_vtypes(control *ctrl)
  */
 int dgd_main(int argc, char *argv[])
 {
-    char buf[STRINGSZ], tag[9];
+    char buf[STRINGSZ], tag[14];
     unsigned int len;
     control *ctrl;
     char *program, *module, *file;
@@ -285,8 +285,7 @@ int dgd_main(int argc, char *argv[])
 
     len = strlen(file = path_resolve(buf, file));
     file[len - 2] = '\0';
-    sprintf(tag, "T%03x%04x", hashstr(file, len) & 0xfff,
-	    (unsigned short) P_random());
+    sprintf(tag, "T%04x%08lx", hashstr(file, len), P_random());
 
     printf("/*\n * This file was compiled from LPC with the DGD precompiler.");
     printf("\n *\n * Original file: \"/%s.c\"\n */\n", file);
@@ -465,8 +464,9 @@ void pc_restore(int fd, int conv)
  * NAME:	swap->init()
  * DESCRIPTION:	pretend to initialize the swap device
  */
-void sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
+bool sw_init(char *file, unsigned int total, unsigned int cache, unsigned int secsize)
 {
+    return TRUE;
 }
 
 /*
@@ -519,7 +519,7 @@ void sw_writev(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->creadv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -527,7 +527,7 @@ void sw_creadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->dreadv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -535,7 +535,7 @@ void sw_dreadv(char *m, sector *vec, Uint size, Uint idx)
 
 /*
  * NAME:	swap->conv()
- * DESCRIPTION:	pretend to read bytes from a vector of sectors in the dump file
+ * DESCRIPTION:	pretend to read bytes from a vector of sectors in the snapshot
  */
 void sw_conv(char *m, sector *vec, Uint size, Uint idx)
 {
@@ -561,7 +561,7 @@ sector sw_count()
 
 /*
  * NAME:	swap->copy()
- * DESCRIPTION:	pretend to copy a vector of sectors to a dump file
+ * DESCRIPTION:	pretend to copy a vector of sectors to a snapshot
  */
 bool sw_copy(Uint time)
 {
@@ -570,9 +570,9 @@ bool sw_copy(Uint time)
 
 /*
  * NAME:	swap->dump()
- * DESCRIPTION:	pretend to dump swap file
+ * DESCRIPTION:	pretend to create snapshot
  */
-int sw_dump(char *dumpfile)
+int sw_dump(char *snapshot)
 {
     return 0;
 }
@@ -590,12 +590,12 @@ void sw_restore(int fd, unsigned int secsize)
  * DESCRIPTION:	pretend to initialize communications
  */
 #ifdef NETWORK_EXTENSIONS
-bool comm_init(int n, int p, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, int p, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #else
-bool comm_init(int n, char **thosts, char **bhosts, 
-	unsigned short *tports, unsigned short *bports, 
+bool comm_init(int n, char **thosts, char **bhosts,
+	unsigned short *tports, unsigned short *bports,
 	int ntelnet, int nbinary)
 #endif
 {
@@ -616,11 +616,11 @@ void comm_finish()
  * DESCRIPTION:	pretend to set the datagram challenge
  */
 void comm_challenge(object *obj, string *str)
-{  
+{
 }
 
 /*
- * NAME:        comm->listen()
+ * NAME:	comm->listen()
  * DESCRIPTION: pretend to start listening on telnet port and binary port
  */
 void comm_listen()
@@ -709,33 +709,18 @@ object *comm_user()
  * NAME:	comm->users()
  * DESCRIPTION:	pretend to return an array with all user objects
  */
-#ifndef NETWORK_EXTENSIONS
 array *comm_users(dataspace *data)
 {
     return (array *) NULL;
 }
-#else
-array *comm_users(dataspace *data, bool ports)
+
+#ifdef NETWORK_EXTENSIONS
+array *comm_ports(dataspace *data)
 {
     return (array *) NULL;
 }
 
-/*
- * NAME:        comm->is_connection()
- * DESCRIPTION: pretend to test if an object is a connection
- */
-bool comm_is_connection(object *obj)
-{
-    return FALSE;
-}
-
-void comm_openport(frame *f, object *obj, unsigned char protocol, 
-	unsigned short port)
-{
-}
-
-void
-comm_connect(frame *f, object *obj, char *addr, unsigned char protocol, 
+void comm_openport(frame *f, object *obj, unsigned char protocol,
 	unsigned short port)
 {
 }
@@ -745,6 +730,24 @@ int comm_senddatagram(object *obj, string *str, string *ip, int port)
     return 0;
 }
 #endif
+
+/*
+ * NAME:	comm->connect()
+ * DESCRIPTION:	pretend to establish an outbound connection
+ */
+void comm_connect(frame *f, object *obj, char *addr, unsigned char protocol,
+	unsigned short port)
+{
+}
+
+/*
+ * NAME:	comm->is_connection()
+ * DESCRIPTION: pretend to test if an object is a connection
+ */
+bool comm_is_connection(object *obj)
+{
+    return FALSE;
+}
 
 /*
  * NAME:	ed->init()
@@ -809,7 +812,7 @@ bool co_init(unsigned int max)
  * NAME:	call_out->check()
  * DESCRIPTION:	pretend to check a new callout
  */
-Uint co_check(unsigned int n, Int delay, unsigned int mdelay, 
+Uint co_check(unsigned int n, Int delay, unsigned int mdelay,
 	Uint *tp, unsigned short *mp, uindex **qp)
 {
     return 0;
@@ -819,7 +822,7 @@ Uint co_check(unsigned int n, Int delay, unsigned int mdelay,
  * NAME:	call_out->new()
  * DESCRIPTION:	pretend to add a new callout
  */
-void co_new(unsigned int oindex, unsigned int handle, Uint t, 
+void co_new(unsigned int oindex, unsigned int handle, Uint t,
 	unsigned int m, uindex *q)
 {
 }
@@ -828,7 +831,7 @@ void co_new(unsigned int oindex, unsigned int handle, Uint t,
  * NAME:	call_out->del()
  * DESCRIPTION:	pretend to remove a callout
  */
-void co_del(unsigned int oindex, unsigned int handle, Uint t, 
+void co_del(unsigned int oindex, unsigned int handle, Uint t,
 	unsigned int m)
 {
 }
@@ -915,6 +918,6 @@ bool co_dump(int fd)
  * NAME:	call_out->restore()
  * DESCRIPTION:	pretend to restore callout table
  */
-void co_restore(int fd, Uint t, int conv, int conv2)
+void co_restore(int fd, Uint t, int conv, int conv2, int conv_time)
 {
 }

@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -210,7 +210,7 @@ bool tk_include(char *file, string **strs, int nstr)
 		P_close(fd);
 		return FALSE;
 	    }
-					 
+
 	    push((macro *) NULL, ALLOC(char, BUF_SIZE), 0, TRUE);
 	} else {
 	    /* read from strings */
@@ -386,30 +386,30 @@ static int gc()
 }
 
 /*
- * NAME:        skip_comment()
+ * NAME:	skip_comment()
  * DESCRIPTION: skip a single comment
  */
 static void skip_comment()
-{ 
+{
     int c;
 
     do {
-        do {
-            c = gc();
-            if (c == EOF) {
-                error("EOF in comment");
-                return;
-            }
-        } while (c != '*');
+	do {
+	    c = gc();
+	    if (c == EOF) {
+		error("EOF in comment");
+		return;
+	    }
+	} while (c != '*');
 
-        do {
-            c = gc();
-        } while (c == '*');
+	do {
+	    c = gc();
+	} while (c == '*');
     } while (c != '/');
 }
 
 /*
- * NAME:        skip_alt_comment()
+ * NAME:	skip_alt_comment()
  * DESCRIPTION: skip c++ style comment
  */
 static void skip_alt_comment()
@@ -417,44 +417,49 @@ static void skip_alt_comment()
     int c;
 
     do {
-        c = gc();
-    } while( ( c != EOF ) && ( c != '\n' ) );
+	c = gc();
+    } while (c != LF && c != EOF);
 }
 
 /*
  * NAME:	comment()
  * DESCRIPTION:	skip comments and white space
  */
-static void comment(int flag)
+static void comment(bool flag)
 {
     int c;
 
     for (;;) {
-        /* first skip the current comment */
-        if( flag) {
-           skip_alt_comment();
-        } else {
-           skip_comment();
-        }
+	/* first skip the current comment */
+	if (flag) {
+	   skip_alt_comment();
+	} else {
+	   skip_comment();
+	}
 
-        /* skip any whitespace */
-        do {
-            c = gc();
-        } while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
+	/* skip any whitespace */
+	do {
+	    c = gc();
+	} while (c == ' ' || c == HT || c == VT || c == FF || c == CR);
 
-        /* check if a new comment follows */
+	/* check if a new comment follows */
 	if (c != '/') {
 	    uc(c);
 	    break;
 	}
 	c = gc();
-	if ( ( c != '*' ) && ( c != '/' )) {
+	if (c == '*') {
+	    flag = FALSE;
+# ifdef SLASHSLASH
+	} else if (c == '/') {
+	    flag = TRUE;
+# endif
+	} else {
 	    uc(c);
 	    c = '/';
 	    uc(c);
 	    break;
 	}
-        flag = ( c == '/' );
     }
 }
 
@@ -636,8 +641,12 @@ int tk_gettok()
 	/* check for comment after white space */
 	if (c == '/') {
 	    c = gc();
-	    if (c == '*' || c == '/') {
-		comment( c == '/' );
+	    if (c == '*') {
+		comment(FALSE);
+# ifdef SLASHSLASH
+	    } else if (c == '/') {
+		comment(TRUE);
+# endif
 	    } else {
 		uc(c);
 		c = '/';
@@ -800,11 +809,18 @@ int tk_gettok()
 
     case '/':
 	c = gc();
-	if (c == '*' || c == '/') {
-            comment( c == '/' );
+	if (c == '*') {
+	    comment(FALSE);
 	    yyleng = 1;
 	    *p = '\0';
 	    return p[-1] = ' ';
+# ifdef SLASHSLASH
+	} else if (c == '/') {
+	    comment(TRUE);
+	    yyleng = 1;
+	    *p = '\0';
+	    return p[-1] = ' ';
+# endif
 	}
 	*p++ = c;
 	TEST('=', DIV_EQ);
@@ -1124,9 +1140,14 @@ int tk_expand(macro *mc)
 	    token = gc();
 	    if (token == '/') {
 		token = gc();
-		if ( ( token == '*' ) || ( token == '/' ) ) {
-		    comment( token == '/' );
-                    token = gc();
+		if (token == '*') {
+		    comment(FALSE);
+		    token = gc();
+# ifdef SLASHSLASH
+		} else if (token == '/') {
+		    comment(TRUE);
+		    token = gc();
+# endif
 		} else {
 		    uc(token);
 		}

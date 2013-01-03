@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -272,7 +272,7 @@ char *P_readdir(void)
 	fd = fdata;
 	if (_findnext(d, &fdata) != 0) {
 	    _findclose(d);
-    	    d = -1;
+	    d = -1;
 	}
     } while (fd.name[0] == '.' &&
 	     (fd.name[1] == '\0' ||
@@ -289,4 +289,16 @@ void P_closedir(void)
     if (d != -1) {
 	_findclose(d);
     }
+}
+
+/*
+ * NAME:	P->execv()
+ * DESCRIPTION:	execute a program
+ */
+int P_execv(char *path, char **argv)
+{
+    UNREFERENCED_PARAMETER(path);
+    UNREFERENCED_PARAMETER(argv);
+    P_message("Hotbooting not supported on Windows\012");	/* LF */
+    return -1;
 }

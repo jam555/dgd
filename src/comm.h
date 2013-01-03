@@ -1,7 +1,7 @@
 /*
- * This file is part of DGD, http://dgd-osr.sourceforge.net/
+ * This file is part of DGD, https://github.com/dworkin/dgd
  * Copyright (C) 1993-2010 Dworkin B.V.
- * Copyright (C) 2010 DGD Authors (see the file Changelog for details)
+ * Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
@@ -17,16 +17,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef NETWORK_EXTENSIONS
 # define  P_TCP      6
 # define  P_UDP      17
 # define  P_TELNET   1
-#endif
 
 typedef struct _connection_ connection;
 
 extern bool	   conn_init	 (int, char**, char**, unsigned short*,
 				    unsigned short*, int, int);
+extern void	   conn_clear	 (void);
 extern void	   conn_finish	 (void);
 #ifndef NETWORK_EXTENSIONS
 extern void	   conn_listen	 (void);
@@ -49,6 +48,22 @@ extern int	   conn_udpwrite (connection*, char*, unsigned int);
 extern bool	   conn_wrdone	 (connection*);
 extern void	   conn_ipnum	 (connection*, char*);
 extern void	   conn_ipname	 (connection*, char*);
+extern void	  *conn_host	 (char*, unsigned short, int*);
+extern connection *conn_connect	 (void*, int);
+extern int	   conn_check_connected (connection*, bool*);
+# ifdef NETWORK_EXTENSIONS
+extern connection *conn_openlisten (unsigned char, unsigned short);
+extern int	   conn_at	 (connection*);
+extern int	   conn_checkaddr (char*);
+extern int	   conn_udpsend	 (connection*, char*, unsigned int, char*,
+				   unsigned short);
+extern int	   conn_udpreceive (connection*, char*, int, char**, int*);
+extern connection *conn_accept	 (connection*);
+# endif
+extern bool	   conn_export	 (connection*, int*, unsigned short*, short*,
+				  int*, int*, char**, char*);
+extern connection *conn_import	 (int, unsigned short, short, int, int, char*,
+				  char, bool);
 
 #ifdef NETWORK_EXTENSIONS
 extern bool	comm_init	(int, int, char**, char**, unsigned short*,
@@ -58,6 +73,7 @@ extern bool	comm_init	(int, char**, char**, unsigned short*,
 				   unsigned short*, int, int);
 #endif
 
+extern void	comm_clear	(void);
 extern void	comm_finish	(void);
 extern void	comm_listen	(void);
 extern int	comm_send	(object*, string*);
@@ -71,23 +87,15 @@ extern string  *comm_ip_number	(object*);
 extern string  *comm_ip_name	(object*);
 extern void	comm_close	(frame*, object*);
 extern object  *comm_user	(void);
-#ifdef NETWORK_EXTENSIONS
-extern void	comm_openport	(frame *f, object *obj, unsigned char protocol, 
-				   unsigned short portnr);
-extern void	comm_connect	(frame *f, object *obj, char *addr, 
+extern void	comm_connect	(frame *f, object *obj, char *addr,
 				   unsigned char protocol, unsigned short port);
-extern connection *conn_connect (char *addr, unsigned short port);
-extern int 	comm_senddatagram (object *obj, string *str, string *ip, int port);
-extern connection * conn_openlisten (unsigned char protocol, unsigned short port);
-extern int 	conn_at		(connection *conn);
-extern int 	conn_checkaddr	(char *ip);
-extern int 	conn_udpsend	(connection *conn, char *buf, unsigned int len, 
-				   char *addr, unsigned short port);
-extern int 	conn_check_connected (connection *conn);
-extern int 	conn_udpreceive (connection *conn, char *buffer, int size, char **host, 
-	 			   int *port);
-extern bool     comm_is_connection (object*);
-extern array   *comm_users      (dataspace *, bool);
-#else
-extern array   *comm_users	(dataspace*);
+#ifdef NETWORK_EXTENSIONS
+extern void	comm_openport	(frame *f, object *obj, unsigned char protocol,
+				   unsigned short portnr);
+extern int	comm_senddatagram (object *obj, string *str, string *ip, int port);
+extern array   *comm_ports      (dataspace*);
 #endif
+extern array   *comm_users	(dataspace*);
+extern bool     comm_is_connection (object*);
+extern bool	comm_dump	(int);
+extern bool	comm_restore	(int);
