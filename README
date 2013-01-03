@@ -1,3 +1,19 @@
+WARNING:
+  This is a modified and UNTESTED VERSION of DGD. It was altered on Januray
+  2nd, 2013, by Jared Maddox, to add support for the MSys environment. If you
+  want a known-good version, then look to the sources described below.
+
+  KNOWN BUGS:
+    For some reason, "make clean" didn't clean:
+      comp/parser.h
+      comp/parser.c
+      host/dosfile.c
+      host/dosfile.o
+      host/windgd.c
+      host/windgd.o
+
+
+
 This file was written for release 1.4 of DGD, Dworkin's Game Driver.
 
 DGD is a rewrite from scratch of the LPMud server.  It runs on Windows, MacOS

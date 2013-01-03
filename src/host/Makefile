@@ -37,16 +37,34 @@ ifeq ($(HOST),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 
-SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
-SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
-ifdef SYSV_STYLE
-  SRC+=lrand48.c
-  SUBOBJ+=lrand48.o
+# Added by Jared Maddox, Jan 2, 2013
+# Note: This was basically just copied from my old DGD-for-MSys version,
+# expect untested bugs.
+#
+ifneq ($(HOST),WIN32)
+  # This was just indented from what was already in this file, so it
+  # should be fine.
+  #
+
+  SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
+  SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
+  ifdef SYSV_STYLE
+    SRC+=lrand48.c
+    SUBOBJ+=lrand48.o
+  else
+    SRC+=random.c
+    SUBOBJ+=random.o
+  endif
+  OBJ=	$(SUBOBJ) connect.o
 else
-  SRC+=random.c
-  SUBOBJ+=random.o
+ # This, in comparison, was copied from my previous implementation. Don't
+ # depend on it being bug-free.
+ #
+
+ SRC= local.c dload.c time.c connect.c xfloat.c dosfile.c windgd.c
+ OBJ= $(SUBOBJ) connect.o dosfile.o windgd.o
+ SUBOBJ= local.o dload.o time.o crypt.o xfloat.o asn.o
 endif
-OBJ=	$(SUBOBJ) connect.o
 
 dgd:	$(OBJ)
 	@for i in $(OBJ); do echo host/$$i; done > dgd
@@ -60,6 +78,12 @@ sub:	$(SUBOBJ)
 clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
+# Next, we have the copy rules.
+#
+ifneq ($(HOST),WIN32)
+  # These are the versions that already existed here, but wrapped to
+  # control their use.
+  #
 
 local.c: unix/local.c
 	cp unix/$@ $@
@@ -81,6 +105,34 @@ time.c: unix/time.c
 
 connect.c: unix/connect.c
 	cp unix/$@ $@
+
+else
+  # And here we have the forms that I've copied from my old
+  # implementation.
+  #
+
+connect.c: win32/connect.c
+	cp win32/$@ $@
+
+dload.c: win32/dload.c
+	cp win32/$@ $@
+
+dosfile.c: win32/dosfile.c
+	cp win32/$@ $@
+
+local.c: win32/local.c
+	cp win32/$@ $@
+
+time.c: win32/time.c
+	cp win32/$@ $@
+
+windgd.c: win32/windgd.c
+	cp win32/$@ $@
+
+endif
+  # Finally, we go on to what we can count on for both versions.
+  #
+
 
 xfloat.c: simfloat.c
 	cp simfloat.c $@

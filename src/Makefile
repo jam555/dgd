@@ -17,7 +17,25 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 OS=$(shell uname -s)
+
+  # Added by Jared Maddox on Jan 2, 2013.
+  # If you're running into a bug while compiling this, it's likely my
+  # fault.
+  #
+  # In addition to the other changes that I've made, I replaced all
+  # instances of "a.out" with $(EXECUTABLE). This localizes the executable
+  # name up here, near the top of the file. I'm not very savy on Make, but
+  # I think it also allows the executable name to be overridden from the
+  # command line, which isn't necessary, but is nice.
+  #
 PLATFORM_DEFINES=
+EXECUTABLE= a.out
+ifeq ($(OS),MINGW32_NT-5.1)
+  HOST=WIN32
+  PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
+  EXECUTABLE= a.exe
+endif
+
 ifeq ($(OS),Darwin)
   HOST=DARWIN
 endif
@@ -45,7 +63,7 @@ DEBUG=	-O -g
 CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -Icomp -Ilex -Ied -Iparser -Ikfun $(CCFLAGS)
 LDFLAGS=
-LIBS=	-ldl
+
 LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
@@ -59,6 +77,13 @@ ifeq ($(HOST),SOLARIS)
   LIBS+=-lsocket -lnsl
 endif
 
+  # Basically transfered from my old port. Not certain HOW much of this is
+  # required, but likely more than you'd think.
+  #
+ifeq ($(OS),MINGW32_NT-5.1)
+ LIBS= -lws2_32 -lkernel32 -luser32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lodbc32 -lodbccp32
+endif
+
 SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \
 	path.c editor.c comm.c call_out.c interpret.c config.c ext.c dgd.c
 OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
@@ -66,7 +91,7 @@ OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
-a.out:	$(OBJ) always
+$(EXECUTABLE):	$(OBJ) always
 	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
 	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
@@ -80,13 +105,13 @@ a.out:	$(OBJ) always
 	      `cat host/dgd` $(LIBS)
 
 always:
-	@rm -f a.out
+	@rm -f $(EXECUTABLE)
 
-all:	a.out
+all:	$(EXECUTABLE)
 
-$(BIN)/driver: a.out
+$(BIN)/driver: $(EXECUTABLE)
 	-mv $(BIN)/driver $(BIN)/driver.old
-	cp a.out $(BIN)/driver
+	cp $(EXECUTABLE) $(BIN)/driver
 
 install: $(BIN)/driver
 
@@ -112,12 +137,12 @@ ed.sub:	$(EDOBJ)
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
-comp/a.out:
+comp/$(EXECUTABLE):
 	cd comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			 'YACC=$(YACC)' 'LIBS=$(LIBS)' a.out
+			 'YACC=$(YACC)' 'LIBS=$(LIBS)' $(EXECUTABLE)
 
 clean:
-	rm -f a.out $(OBJ) comp.sub lex.sub ed.sub
+	rm -f $(EXECUTABLE) $(OBJ) comp.sub lex.sub ed.sub
 	cd comp; $(MAKE) clean
 	cd lex; $(MAKE) clean
 	cd ed; $(MAKE) clean
