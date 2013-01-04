@@ -16,22 +16,25 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+# Added by Jared Maddox on Jan 4, 2013.
+# If you're having a bug while compiling this, it's likely my fault.
+# Removed the warning messages from my previous patch.
+#
+include makeheader.win
+
 OS=$(shell uname -s)
 
-  # Added by Jared Maddox on Jan 2, 2013.
-  # If you're running into a bug while compiling this, it's likely my
-  # fault.
-  #
-  # In addition to the other changes that I've made, I replaced all
-  # instances of "a.out" with $(EXECUTABLE). This localizes the executable
-  # name up here, near the top of the file. I'm not very savy on Make, but
-  # I think it also allows the executable name to be overridden from the
-  # command line, which isn't necessary, but is nice.
-  #
 PLATFORM_DEFINES=
 EXECUTABLE= a.out
-ifeq ($(OS),MINGW32_NT-5.1)
-  HOST=WIN32
+
+  # Thanks to Eli, LRN, and Earnie from the MinGW/MSys list for suggesting
+  # the MSYSTEM variable. It also provides information on e.g. whether the
+  # executable is being compiled FOR MSys or not. At present, that's
+  # ignored, but it might make sense TO SOMEONE ELSE to add some logic to
+  # deal with it.
+ifdef MSYSTEM
+  HOST=MSys
   PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
   EXECUTABLE= a.exe
 endif
@@ -54,6 +57,17 @@ endif
 ifeq ($(OS),SunOS)
   HOST=SOLARIS
 endif
+
+  # I added this in response to some people pointing out that there may be
+  # platforms and sub-platforms on Windows that I'm not taking into
+  # consideration. For example, I can tell you right here and now that I'm
+  # not taking Cygwin into consideration. With this the user can override
+  # any such disregard. Which is not, of course, the same as saying that
+  # this makefile will work correctly.
+ifdef HOST_OVERRIDE
+  HOST=$(HOST_OVERRIDE)
+endif
+
 ifndef HOST
   $(error HOST is undefined)
 endif
@@ -77,10 +91,7 @@ ifeq ($(HOST),SOLARIS)
   LIBS+=-lsocket -lnsl
 endif
 
-  # Basically transfered from my old port. Not certain HOW much of this is
-  # required, but likely more than you'd think.
-  #
-ifeq ($(OS),MINGW32_NT-5.1)
+ifeq ($(HOST),MSys)
  LIBS= -lws2_32 -lkernel32 -luser32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lodbc32 -lodbccp32
 endif
 

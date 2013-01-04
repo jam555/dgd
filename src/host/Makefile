@@ -37,15 +37,11 @@ ifeq ($(HOST),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 
-# Added by Jared Maddox, Jan 2, 2013
-# Note: This was basically just copied from my old DGD-for-MSys version,
-# expect untested bugs.
-#
-ifneq ($(HOST),WIN32)
-  # This was just indented from what was already in this file, so it
-  # should be fine.
+  # Modified by Jared Maddox on January 4th, 2013.
+  # I changed ($(HOST),WIN32) to ($(HOST),MSys) to support the changes
+  # that I made in the root makefile.
   #
-
+ifneq ($(HOST),MSys)
   SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
   SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
   ifdef SYSV_STYLE
@@ -57,10 +53,6 @@ ifneq ($(HOST),WIN32)
   endif
   OBJ=	$(SUBOBJ) connect.o
 else
- # This, in comparison, was copied from my previous implementation. Don't
- # depend on it being bug-free.
- #
-
  SRC= local.c dload.c time.c connect.c xfloat.c dosfile.c windgd.c
  OBJ= $(SUBOBJ) connect.o dosfile.o windgd.o
  SUBOBJ= local.o dload.o time.o crypt.o xfloat.o asn.o
@@ -78,12 +70,9 @@ sub:	$(SUBOBJ)
 clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
-# Next, we have the copy rules.
-#
-ifneq ($(HOST),WIN32)
-  # These are the versions that already existed here, but wrapped to
-  # control their use.
-  #
+
+ifneq ($(HOST),MSys)
+
 
 local.c: unix/local.c
 	cp unix/$@ $@
@@ -106,10 +95,9 @@ time.c: unix/time.c
 connect.c: unix/connect.c
 	cp unix/$@ $@
 
+
 else
-  # And here we have the forms that I've copied from my old
-  # implementation.
-  #
+
 
 connect.c: win32/connect.c
 	cp win32/$@ $@
@@ -129,9 +117,8 @@ time.c: win32/time.c
 windgd.c: win32/windgd.c
 	cp win32/$@ $@
 
+
 endif
-  # Finally, we go on to what we can count on for both versions.
-  #
 
 
 xfloat.c: simfloat.c
