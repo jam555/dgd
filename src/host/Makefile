@@ -37,11 +37,10 @@ ifeq ($(HOST),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 
-  # Modified by Jared Maddox on January 4th, 2013.
-  # I changed ($(HOST),WIN32) to ($(HOST),MSys) to support the changes
-  # that I made in the root makefile.
+  # Modified by Jared Maddox on January 24th, 2013.
+  # I changed ($(HOST),MSys) back to ($(HOST),WIN32).
   #
-ifneq ($(HOST),MSys)
+ifneq ($(HOST),WIN32)
   SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
   SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
   ifdef SYSV_STYLE
@@ -71,7 +70,7 @@ clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
 
-ifneq ($(HOST),MSys)
+ifneq ($(HOST),WIN32)
 
 
 local.c: unix/local.c

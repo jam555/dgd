@@ -1,9 +1,10 @@
 WARNING:
   This is a modified and UNTESTED VERSION of DGD. It was altered on January
-  4th, 2013, by Jared Maddox, to add support for the MSys environment.
+  24th, 2013, by Jared Maddox, to add support for the MSys environment.
   Specifically, it is a further modification of a similar alteration that
-  was done on January 2nd, 2013. If you want a known-good version, then
-  look to the sources described below.
+  was done on January 4th, 2013, which itself was a modification of an
+  alteration done on January 2nd, 2013. If you want a known-good version,
+  then look to the sources described below.
 
   KNOWN BUGS:
     For some reason, "make clean" didn't clean:
