@@ -16,9 +16,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
-  # Test for Windows without MSys.
-  #
 ifeq ($(OS),Windows_NT)
   ifndef MSYSTEM
     $(error Compilation on Windows requires MSys)
@@ -26,16 +23,9 @@ ifeq ($(OS),Windows_NT)
 endif
 
 OS=$(shell uname -s)
-
 PLATFORM_DEFINES=
 EXECUTABLE= a.out
 
-  # Thanks to Eli, LRN, and Earnie from the MinGW/MSys list for suggesting
-  # the MSYSTEM variable. It also provides information on e.g. whether the
-  # executable is being compiled FOR MSys or not. At present, MSys is only
-  # supported as a compiler platform.
-  # In the future, we may want to test for MINGW64 as well.
-  #
 ifdef MSYSTEM
   ifeq ($(MSYSTEM),MINGW32)
     HOST=WIN32
@@ -43,7 +33,6 @@ ifdef MSYSTEM
     EXECUTABLE= a.exe
   endif
 endif
-
 ifeq ($(OS),Darwin)
   HOST=DARWIN
 endif
@@ -62,7 +51,6 @@ endif
 ifeq ($(OS),SunOS)
   HOST=SOLARIS
 endif
-
 ifndef HOST
   $(error HOST is undefined)
 endif
@@ -79,15 +67,16 @@ LD=	$(CC)
 YACC=	yacc
 BIN=	../bin
 
+ifeq ($(HOST),WIN32)
+ LIBS= -lws2_32
+else
+ -LIBS=  -ldl
+endif
 ifeq ($(HOST),FREEBSD)
   LIBS=
 endif
 ifeq ($(HOST),SOLARIS)
   LIBS+=-lsocket -lnsl
-endif
-
-ifeq ($(HOST),MSys)
- LIBS= -lws2_32 -lkernel32 -luser32 -lgdi32 -lwinspool -lcomdlg32 -ladvapi32 -lshell32 -lole32 -loleaut32 -luuid -lodbc32 -lodbccp32
 endif
 
 SRC=	alloc.c error.c hash.c swap.c str.c array.c object.c sdata.c data.c \

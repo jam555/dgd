@@ -23,6 +23,7 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
+PLATFORM_DIR=unix
 
 ifeq ($(HOST),LINUX)
   SYSV_STYLE=1
@@ -37,9 +38,6 @@ ifeq ($(HOST),GENERIC_SYSV)
   SYSV_STYLE=1
 endif
 
-  # Modified by Jared Maddox on January 24th, 2013.
-  # I changed ($(HOST),MSys) back to ($(HOST),WIN32).
-  #
 ifneq ($(HOST),WIN32)
   SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
   SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
@@ -52,6 +50,7 @@ ifneq ($(HOST),WIN32)
   endif
   OBJ=	$(SUBOBJ) connect.o
 else
+ PLATFORM_DIR=win32
  SRC= local.c dload.c time.c connect.c xfloat.c dosfile.c windgd.c
  OBJ= $(SUBOBJ) connect.o dosfile.o windgd.o
  SUBOBJ= local.o dload.o time.o crypt.o xfloat.o asn.o
@@ -72,7 +71,6 @@ clean:
 
 ifneq ($(HOST),WIN32)
 
-
 local.c: unix/local.c
 	cp unix/$@ $@
 
@@ -91,15 +89,7 @@ dload.c: unix/dload.c
 time.c: unix/time.c
 	cp unix/$@ $@
 
-connect.c: unix/connect.c
-	cp unix/$@ $@
-
-
 else
-
-
-connect.c: win32/connect.c
-	cp win32/$@ $@
 
 dload.c: win32/dload.c
 	cp win32/$@ $@
@@ -116,9 +106,10 @@ time.c: win32/time.c
 windgd.c: win32/windgd.c
 	cp win32/$@ $@
 
-
 endif
 
+connect.c: $(PLATFORM_DIR)/connect.c
+	cp $(PLATFORM_DIR)/$@ $@
 
 xfloat.c: simfloat.c
 	cp simfloat.c $@
