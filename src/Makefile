@@ -16,6 +16,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
+
+  # Windows sets OS, so we can use it here. uname -s sets it to a more
+  # baroque value, and it doesn't normally exist on Windows anyways.
+  #
 ifeq ($(OS),Windows_NT)
   ifndef MSYSTEM
     $(error Compilation on Windows requires MSys)
@@ -24,13 +28,13 @@ endif
 
 OS=$(shell uname -s)
 PLATFORM_DEFINES=
-EXECUTABLE= a.out
+EXE=
 
 ifdef MSYSTEM
   ifeq ($(MSYSTEM),MINGW32)
     HOST=WIN32
     PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
-    EXECUTABLE= a.exe
+    EXE=.exe
   endif
 endif
 ifeq ($(OS),Darwin)
@@ -86,7 +90,7 @@ OBJ=	alloc.o error.o hash.o swap.o str.o array.o object.o sdata.o data.o \
 COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
-$(EXECUTABLE):	$(OBJ) always
+dgd$(EXE):	$(OBJ) always
 	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
 	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
 	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
@@ -100,13 +104,13 @@ $(EXECUTABLE):	$(OBJ) always
 	      `cat host/dgd` $(LIBS)
 
 always:
-	@rm -f $(EXECUTABLE)
+	@rm -f dgd$(EXE)
 
-all:	$(EXECUTABLE)
+all:	dgd$(EXE)
 
-$(BIN)/driver: $(EXECUTABLE)
+$(BIN)/driver: dgd$(EXE)
 	-mv $(BIN)/driver $(BIN)/driver.old
-	cp $(EXECUTABLE) $(BIN)/driver
+	cp dgd$(EXE) $(BIN)/driver
 
 install: $(BIN)/driver
 
@@ -132,12 +136,12 @@ ed.sub:	$(EDOBJ)
 comp/parser.h: comp/parser.y
 	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
 
-comp/$(EXECUTABLE):
+comp/dgd$(EXE):
 	cd comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
-			 'YACC=$(YACC)' 'LIBS=$(LIBS)' $(EXECUTABLE)
+			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd$(EXE)
 
 clean:
-	rm -f $(EXECUTABLE) $(OBJ) comp.sub lex.sub ed.sub
+	rm -f dgd$(EXE) $(OBJ) comp.sub lex.sub ed.sub
 	cd comp; $(MAKE) clean
 	cd lex; $(MAKE) clean
 	cd ed; $(MAKE) clean
