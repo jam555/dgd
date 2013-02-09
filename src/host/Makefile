@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010,2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010,2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -23,7 +23,6 @@ CCFLAGS=$(DEFINES) $(DEBUG)
 CFLAGS=	-I. -I.. $(CCFLAGS)
 LINTFLAGS=-abcehpruz
 CC=	gcc
-PLATFORM_DIR=unix
 
 ifeq ($(HOST),LINUX)
   SYSV_STYLE=1
@@ -39,6 +38,7 @@ ifeq ($(HOST),GENERIC_SYSV)
 endif
 
 ifneq ($(HOST),WIN32)
+  PLATFORM_DIR=unix
   SRC=	local.c dirent.c dload.c time.c connect.c xfloat.c
   SUBOBJ=	local.o dirent.o dload.o time.o crypt.o xfloat.o asn.o
   ifdef SYSV_STYLE
@@ -52,8 +52,8 @@ ifneq ($(HOST),WIN32)
 else
  PLATFORM_DIR=win32
  SRC= local.c dload.c time.c connect.c xfloat.c dosfile.c windgd.c
- OBJ= $(SUBOBJ) connect.o dosfile.o windgd.o
  SUBOBJ= local.o dload.o time.o crypt.o xfloat.o asn.o
+ OBJ= $(SUBOBJ) connect.o dosfile.o windgd.o
 endif
 
 dgd:	$(OBJ)
@@ -69,46 +69,31 @@ clean:
 	rm -f dgd sub $(SRC) $(OBJ)
 
 
-ifneq ($(HOST),WIN32)
+local.c: $(PLATFORM_DIR)/local.c
+	cp $(PLATFORM_DIR)/$@ $@
 
-local.c: unix/local.c
-	cp unix/$@ $@
+random.c: $(PLATFORM_DIR)/random.c
+	cp $(PLATFORM_DIR)/$@ $@
 
-random.c: unix/random.c
-	cp unix/$@ $@
+lrand48.c: $(PLATFORM_DIR)/lrand48.c
+	cp $(PLATFORM_DIR)/$@ $@
 
-lrand48.c: unix/lrand48.c
-	cp unix/$@ $@
+dirent.c: $(PLATFORM_DIR)/dirent.c
+	cp $(PLATFORM_DIR)/$@ $@
 
-dirent.c: unix/dirent.c
-	cp unix/$@ $@
+dload.c: $(PLATFORM_DIR)/dload.c
+	cp $(PLATFORM_DIR)/$@ $@
 
-dload.c: unix/dload.c
-	cp unix/$@ $@
-
-time.c: unix/time.c
-	cp unix/$@ $@
-
-else
-
-dload.c: win32/dload.c
-	cp win32/$@ $@
-
-dosfile.c: win32/dosfile.c
-	cp win32/$@ $@
-
-local.c: win32/local.c
-	cp win32/$@ $@
-
-time.c: win32/time.c
-	cp win32/$@ $@
-
-windgd.c: win32/windgd.c
-	cp win32/$@ $@
-
-endif
+time.c: $(PLATFORM_DIR)/time.c
+	cp $(PLATFORM_DIR)/$@ $@
 
 connect.c: $(PLATFORM_DIR)/connect.c
+	cp $(PLATFORM_DIR)/$@ $@
+
+dosfile.c: $(PLATFORM_DIR)/dosfile.c
+	cp $(PLATFORM_DIR)/$@ $@
+
+windgd.c: $(PLATFORM_DIR)/windgd.c
 	cp $(PLATFORM_DIR)/$@ $@
 
 xfloat.c: simfloat.c
