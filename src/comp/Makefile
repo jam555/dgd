@@ -1,7 +1,7 @@
 #
 # This file is part of DGD, https://github.com/dworkin/dgd
 # Copyright (C) 1993-2010 Dworkin B.V.
-# Copyright (C) 2010-2012 DGD Authors (see the commit log for details)
+# Copyright (C) 2010-2013 DGD Authors (see the commit log for details)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -38,11 +38,11 @@ DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
 $(PRECOMPNAME)$(EXE):	$(COMPOBJ) always
-	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
-	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
-	cd ../host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
+	cd ..; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
+	cd ../lex; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../parser; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../kfun; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
+	cd ../host; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' sub
 	$(LD) $(DEBUG) $(LDFLAGS) $(COMPOBJ) `cat ../comp.sub` \
 	      `cat ../lex/comp` `cat ../parser/comp` `cat ../kfun/comp` \
 	      `cat ../host/sub` $(LIBS)
