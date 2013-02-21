@@ -27,6 +27,8 @@ LINTFLAGS=-abcehpruz
 CC=	gcc
 LD=	$(CC)
 YACC=	yacc
+PRECOMPNAME=lpcc
+EXE=
 
 SRC=	node.c parser.c control.c optimize.c codegeni.c compile.c csupport.c \
 	codegenc.c comp.c
@@ -35,7 +37,7 @@ OBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o \
 DGDOBJ=	node.o parser.o control.o optimize.o codegeni.o compile.o csupport.o
 COMPOBJ=node.o parser.o control.o optimize.o codegenc.o compile.o comp.o
 
-a.out:	$(COMPOBJ) always
+$(PRECOMPNAME)$(EXE):	$(COMPOBJ) always
 	cd ..; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp.sub
 	cd ../lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
 	cd ../parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' comp
@@ -46,7 +48,7 @@ a.out:	$(COMPOBJ) always
 	      `cat ../host/sub` $(LIBS)
 
 always:
-	@rm -f a.out
+	@rm -f $(PRECOMPNAME)$(EXE)
 
 lint:
 	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
@@ -60,7 +62,7 @@ parser.c parser.h: parser.y
 	mv y.tab.h parser.h
 
 clean:
-	rm -f dgd a.out $(OBJ)
+	rm -f dgd $(PRECOMPNAME)$(EXE) $(OBJ)
 
 
 $(OBJ) comp.o: ../dgd.h ../config.h ../host.h ../error.h ../alloc.h

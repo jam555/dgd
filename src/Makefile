@@ -71,6 +71,7 @@ CC=	gcc
 LD=	$(CC)
 YACC=	yacc
 BIN=	../bin
+PRECOMPNAME=lpcc
 
 ifeq ($(HOST),WIN32)
  LIBS= -lws2_32
@@ -90,14 +91,14 @@ COMPOBJ=alloc.o error.o hash.o path.o str.o array.o object.o sdata.o data.o \
 	interpret.o config.o ext.o
 
 dgd$(EXE):	$(OBJ) always
-	cd comp; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
-	cd lex; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd ed; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd parser; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd kfun; $(MAKE) 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
-	cd lpc; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+	cd comp; $(MAKE) 'PRECOMPNAME=$(PRECOMPNAME)' 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' 'YACC=$(YACC)' dgd
+	cd lex; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd ed; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd parser; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd kfun; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd lpc; $(MAKE) 'PRECOMPNAME=$(PRECOMPNAME)' 'EXE=$(EXE)' 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
 			'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd
-	cd host; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
+	cd host; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' dgd
 	$(LD) $(DEBUG) $(LDFLAGS) -o $@ $(OBJ) `cat comp/dgd` `cat lex/dgd` \
 	      `cat ed/dgd` `cat parser/dgd` `cat kfun/dgd` `cat lpc/dgd` \
 	      `cat host/dgd` $(LIBS)
@@ -115,13 +116,13 @@ install: $(BIN)/driver
 
 lint:
 	lint $(LINTFLAGS) $(CFLAGS) $(SRC)
-	@cd comp; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd lex; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd ed; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd parser; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd kfun; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd lpc; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
-	@cd host; $(MAKE) 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd comp; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd lex; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd ed; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd parser; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd kfun; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd lpc; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
+	@cd host; $(MAKE) 'EXE=$(EXE)' 'LINTFLAGS=$(LINTFLAGS)' 'CCFLAGS=$(CCFLAGS)' lint
 
 comp.sub: $(COMPOBJ)
 	@for i in $(COMPOBJ); do echo ../$$i; done > comp.sub
@@ -133,10 +134,10 @@ ed.sub:	$(EDOBJ)
 	@for i in $(EDOBJ); do echo ../$$i; done > ed.sub
 
 comp/parser.h: comp/parser.y
-	cd comp; $(MAKE) 'YACC=$(YACC)' parser.h
+	cd comp; $(MAKE) 'EXE=$(EXE)' 'YACC=$(YACC)' parser.h
 
 comp/dgd$(EXE):
-	cd comp; $(MAKE) 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
+	cd comp; $(MAKE) 'EXE=$(EXE)' 'CC=$(CC)' 'HOST=$(HOST)' 'CCFLAGS=$(CCFLAGS)' \
 			 'YACC=$(YACC)' 'LIBS=$(LIBS)' dgd$(EXE)
 
 clean:
