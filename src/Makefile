@@ -17,13 +17,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-  # Windows sets OS to "Windows_NT", so we can use it here. uname -s sets
-  # it to a more baroque (and version-dependent!) value, and it doesn't
-  # normally exist on Windows anyways.
+  # This test exists only to give the user more informative feedback than
+  # just saying that an executable is missing. Windows sets OS to
+  # "Windows_NT", so we can use it here. uname -s sets it to a more ornate
+  # (and version-dependent!) value, and it doesn't normally exist on
+  # Windows anyways.
   #
 ifeq ($(OS),Windows_NT)
   ifndef MSYSTEM
-    $(error Compilation on Windows requires MSys)
+    $(warning Compilation on Windows requires MSys or Cygwin for "uname", MSys not detected, testing for Cygwin...)
   endif
 endif
 
@@ -37,6 +39,10 @@ ifdef MSYSTEM
     PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
     EXE=.exe
   endif
+else ifeq ($(shell uname -o),Cygwin)
+  HOST=WIN32
+  PLATFORM_DEFINES= -D_WIN32_WINNT=0x501
+  EXE=.exe
 endif
 ifeq ($(OS),Darwin)
   HOST=DARWIN
