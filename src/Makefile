@@ -17,8 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-  # Windows sets OS, so we can use it here. uname -s sets it to a more
-  # baroque value, and it doesn't normally exist on Windows anyways.
+  # Windows sets OS to "Windows_NT", so we can use it here. uname -s sets
+  # it to a more baroque (and version-dependent!) value, and it doesn't
+  # normally exist on Windows anyways.
   #
 ifeq ($(OS),Windows_NT)
   ifndef MSYSTEM
